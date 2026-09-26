@@ -111,6 +111,9 @@
   .c[data-st="under"] .bd{background:color-mix(in srgb,var(--under) 16%,transparent);color:var(--under)}
   .c[data-st="band"]  .bd{background:color-mix(in srgb,var(--band) 16%,transparent);color:var(--band)}
   .c[data-st="over"]  .bd{background:color-mix(in srgb,var(--over) 14%,transparent);color:var(--over)}
+  .sv{font-size:10.5px;padding:1px 6px;border:1px solid currentColor;border-radius:999px;color:var(--muted)}
+  .sv.under{color:var(--under)} .sv.mixed,.sv.fair{color:var(--band)} .sv.over,.sv.risk{color:var(--over)}
+  .cl{font-family:var(--mono);font-size:10.5px;color:var(--ink-2)}
   .tg{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--line);
       border-radius:3px;padding:1px 5px}
   .sp{flex:1}
@@ -179,6 +182,7 @@
     <span>갱신 <b id="asof">—</b></span>
     <span><b id="cnt">—</b>종목</span>
     <span>조회 전용</span>
+    <a href="./rules.html" style="color:var(--accent)">규칙집</a>
   </div>
   <div id="offline">오프라인 — 마지막으로 받아둔 값을 보여준다. 시세는 <span id="offAsof">—</span> 기준이다.</div>
 </header>
@@ -269,6 +273,8 @@
     return s.st === filt;
   }
 
+  var SVL = {under:"저평가", mixed:"혼재", over:"고평가", fair:"적정", risk:"관문 탈락",
+             hold:"보류", nodata:"미수집", blocked:"보류"};
   function card(s){
     var na = !!NA[s.st];
     var h = '<article class="c" data-st="' + esc(s.st) + '">'
@@ -281,6 +287,11 @@
       + '<div><i>순점</i><span>' + fmtNet(s.net) + (s.nrm != null && s.nrm !== s.net
           ? ' <small style="opacity:.65">(' + fmtNet(s.nrm) + ')</small>' : '') + '</span></div>'
       + '</div><div class="c-f"><span class="bd">' + esc(LB[s.st] || s.st) + '</span>';
+    // 자기 평균 대비 판정 — 비율과 따로 본다(규칙집 참고). ETF 는 해당 없음이라 안 붙인다
+    if(s.sv && s.sv.v && s.sv.v !== "na")
+      h += '<span class="sv ' + esc(s.sv.v) + '" title="' + esc((s.sv.why || "") + (s.sv.tags && s.sv.tags.length ? " · " + s.sv.tags.join(" · ") : "")) + '">자기평균 '
+         + esc(SVL[s.sv.v] || s.sv.v) + (s.sv.tags && s.sv.tags.some(function(x){ return x.indexOf("이익") === 0; }) ? " ⚠" : "") + '</span>';
+    if(s.cl) h += '<span class="cl" title="체크리스트 ' + s.cl.n + '문항 평균 (5점 만점)">체크 ' + s.cl.avg.toFixed(1) + '/5</span>';
     // 규칙은 번호만 적으면 읽는 사람이 매번 규칙표를 찾아야 한다 — 뜻을 같이 적는다
     if(s.rule){
       var rm = RMAP[s.rule];

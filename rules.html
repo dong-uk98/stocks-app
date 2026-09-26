@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>원장 규칙집</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@600;700&display=swap">
+<style>
+  :root{
+    --paper:#E9EDF1; --card:#FBFCFD; --line:#C9D2DB; --line-soft:#DDE4EA;
+    --ink:#161C25; --ink-2:#3D4854; --muted:#6C7885; --accent:#1E4B8F; --accent-soft:#DCE6F4;
+    --under:#0E7A63; --band:#9C6716; --over:#A83A3A;
+    --sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    --serif:"Noto Serif KR","Apple SD Gothic Neo",Georgia,serif;
+    --mono:"IBM Plex Mono","SFMono-Regular",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --paper:#0D1117; --card:#151B24; --line:#2A3441; --line-soft:#212A35;
+      --ink:#E5EAF1; --ink-2:#BAC4D1; --muted:#8794A3; --accent:#86ACE4; --accent-soft:#1B2735;
+      --under:#4FBFA0; --band:#D3A054; --over:#E08282;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#0D1117; --card:#151B24; --line:#2A3441; --line-soft:#212A35;
+    --ink:#E5EAF1; --ink-2:#BAC4D1; --muted:#8794A3; --accent:#86ACE4; --accent-soft:#1B2735;
+    --under:#4FBFA0; --band:#D3A054; --over:#E08282;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font:15px/1.7 var(--sans)}
+  .wrap{max-width:880px;margin:0 auto;padding-inline:20px;padding-block:32px 64px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:8px}
+  h1{font:700 clamp(26px,5vw,36px)/1.2 var(--serif);letter-spacing:-.02em;margin:0 0 8px;text-wrap:balance}
+  .meta{font:12px/1.6 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+  nav{display:flex;flex-wrap:wrap;gap:6px 14px;padding-block:14px;border-bottom:1px solid var(--line);font-size:13px}
+  nav a{color:var(--accent);text-decoration:none} nav a:hover,nav a:focus-visible{text-decoration:underline}
+  section{padding-block:34px 6px}
+  h2{font:700 21px/1.35 var(--serif);margin:0 0 6px;text-wrap:balance}
+  .lead{color:var(--ink-2);max-width:66ch;margin:0 0 18px}
+  h3{font:600 14px/1.4 var(--sans);letter-spacing:.04em;color:var(--muted);margin:26px 0 8px}
+  .axes{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+  .axis{background:var(--card);border:1px solid var(--line-soft);padding:14px 16px}
+  .axis b{display:block;font:600 15px/1.4 var(--sans)}
+  .axis .q{font:500 12px/1.5 var(--mono);color:var(--accent);margin:2px 0 8px}
+  .axis p{margin:0;font-size:13.5px;color:var(--ink-2)}
+  .tbl{overflow-x:auto;background:var(--card);border:1px solid var(--line-soft)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{text-align:left;vertical-align:top;padding:10px 12px;border-top:1px solid var(--line-soft)}
+  thead th{border-top:0;font:600 11px/1.3 var(--sans);letter-spacing:.06em;color:var(--muted);background:var(--paper)}
+  td.n{font:500 13px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  th[scope=row]{width:9.5em;font-weight:400}
+  .rid{display:block;font:600 16px/1.2 var(--mono);color:var(--accent)}
+  .rt{font-size:12.5px;color:var(--muted)}
+  code{font:500 13px var(--mono);color:var(--ink)}
+  td p{margin:4px 0 8px;color:var(--ink-2)}
+  .tks{display:flex;flex-wrap:wrap;gap:4px}
+  .tk{font:500 11px/1 var(--mono);padding:4px 6px;border:1px solid var(--line);color:var(--ink-2)}
+  .none{font-size:12px;color:var(--muted)}
+  .ax{display:block;font-size:11px;color:var(--muted);letter-spacing:.04em}
+  .st{display:inline-block;font:600 11px/1 var(--sans);padding:4px 6px;border:1px solid currentColor;margin-right:4px}
+  .st.u{color:var(--under)} .st.b{color:var(--band)} .st.o{color:var(--over)} .st.m{color:var(--muted)}
+  .gate{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+  .box{background:var(--card);border:1px solid var(--line-soft);padding:14px 16px}
+  .box h4{margin:0 0 6px;font:600 14px/1.4 var(--sans)}
+  .box ol,.box ul{margin:0;padding-left:1.2em;font-size:13.5px;color:var(--ink-2)}
+  .note{font-size:13px;color:var(--muted);max-width:66ch}
+  ul.pend{padding-left:1.2em;max-width:70ch} ul.pend li{margin-bottom:8px}
+  footer{margin-top:40px;border-top:1px solid var(--line);padding-top:14px;font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>원장 규칙집</h1>
+  <div class="meta">규칙 판 2026-09-26+d5ed20185bba · 종목 배정 기준 2026-09-26 00:59 UTC · 50종목</div>
+</header>
+<nav aria-label="목차">
+  <a href="#axes">네 개의 축</a><a href="#start">시작가 규칙</a><a href="#self">자기 평균 대비</a>
+  <a href="#net">순점</a><a href="#check">체크리스트 5점</a><a href="#pending">확인 대기</a><a href="#common">공통 원칙</a>
+</nav>
+
+<section id="axes">
+  <h2>네 개의 축은 서로 섞지 않는다</h2>
+  <p class="lead">원장은 한 종목을 네 가지로 따로 잽니다. 둘은 가격(얼마면 싼가), 둘은 질(어떤 회사인가)입니다. 서로 더하지 않습니다 — 싼 것과 좋은 것은 다른 질문입니다.</p>
+  <div class="axes">
+    <div class="axis"><b>비율</b><div class="q">현재가 ÷ 저평가 시작가</div>
+      <p><span class="st u">저평가 후보</span> 1.00 미만 · <span class="st b">밴드 하단 부근</span> 1.15 이하 · <span class="st o">고평가 신호</span> 그 위</p></div>
+    <div class="axis"><b>자기 평균 대비</b><div class="q">PER·PBR 5년 중앙값 위치</div>
+      <p>상장 5년 이상과 미만을 다르게 봅니다. 비율과 나란히 보여 주고, 어느 쪽이 맞는지는 평점 추적이 가립니다.</p></div>
+    <div class="axis"><b>순점</b><div class="q">가점 11 − 감점 11</div>
+      <p>잉여현금·설비투자·국채 대비 이익·이익 품질·주주 환원. 금융업은 성립하지 않는 항목을 분모에서 뺍니다.</p></div>
+    <div class="axis"><b>체크리스트</b><div class="q">문항별 1~5점 · 평균</div>
+      <p>100문항 중 수집값으로 근거를 댈 수 있는 19문항만 채점합니다. 순점과 섞지 않습니다.</p></div>
+  </div>
+</section>
+
+<section id="start">
+  <h2>시작가 규칙 — 종목마다 하나</h2>
+  <p class="lead">"여기서부터 산다"는 가격입니다. 네 규칙 모두 자기 5년 밴드의 <b>싼 쪽</b>(하위 25%)을 씁니다. 5년은 소스가 주는 최대 20분기입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>규칙</th><th>산출식 · 쓰는 경우 · 지금 적용 종목</th></tr></thead>
+    <tbody><tr><th scope="row"><span class="rid">R1</span><span class="rt">수익 성장형</span></th><td><code>TTM EPS × 5년 PER 하위 25%</code><p>이익이 꾸준한 회사. 버는 돈에 5년 중 싸게 거래되던 PER 을 곱한다. 비반복 손익이 이익의 30%를 넘으면 정상화 EPS 를 쓴다.</p><div class="tks"><span class="tk" title="애플">AAPL</span><span class="tk" title="아마존">AMZN</span><span class="tk" title="브로드컴">AVGO</span><span class="tk" title="BHP 그룹(ADR)">BHP</span><span class="tk" title="알파벳 A">GOOGL</span><span class="tk" title="메타 플랫폼스">META</span><span class="tk" title="마이크로소프트">MSFT</span><span class="tk" title="넷플릭스">NFLX</span><span class="tk" title="나이키">NKE</span><span class="tk" title="엔비디아">NVDA</span><span class="tk" title="오라클">ORCL</span><span class="tk" title="트랙터 서플라이">TSCO</span><span class="tk" title="유나이티드헬스 그룹">UNH</span><span class="tk" title="자일럼">XYL</span></div></td></tr><tr><th scope="row"><span class="rid">R2</span><span class="rt">성장 옵션형</span></th><td><code>SPS × 종목별 P/S 하위 25%</code><p>이익이 얇아 PER 이 서지 않는 성장주. 매출에 5년 중 싸던 P/S 를 곱한다.</p><div class="tks"><span class="tk" title="테슬라">TSLA</span></div></td></tr><tr><th scope="row"><span class="rid">R3</span><span class="rt">순환형</span></th><td><code>BPS × 5년 PBR 하위 25%</code><p>경기 따라 이익이 출렁여 PER 이 거꾸로 도는 순환주·금융. 장부가에 5년 중 싸던 PBR 을 곱한다.</p><div class="tks"><span class="tk" title="대신증권">003540</span><span class="tk" title="현대차">005380</span><span class="tk" title="POSCO홀딩스">005490</span><span class="tk" title="삼성전자">005930</span><span class="tk" title="KT&amp;G">033780</span><span class="tk" title="포스코인터내셔널">047050</span><span class="tk" title="LG화학">051910</span><span class="tk" title="뱅크오브아메리카">BAC</span><span class="tk" title="CRH">CRH</span><span class="tk" title="셰브론">CVX</span></div></td></tr><tr><th scope="row"><span class="rid">R3N</span><span class="rt">순자산형(지주)</span></th><td><code>주당 NAV × (1 − 45%)</code><p>보유 자산이 본체인 지주회사. 역사적 할인율을 적용한다.</p><div class="tks"><span class="tk" title="소프트뱅크그룹">9984.T</span></div></td></tr><tr><th scope="row"><span class="rid">R4</span><span class="rt">적자 테마형</span></th><td><code>주당 순현금 (Floor)</code><p>적자라 배수가 서지 않는다. 사업가치를 0으로 봐도 남는 돈이라 적정가가 아니라 하방 바닥이다. 저평가·고평가 축에서 빼고 &#x27;Floor 대비 N배&#x27;로 적는다.</p><div class="tks"><span class="tk" title="케이엔솔">053080</span><span class="tk" title="모비스">250060</span><span class="tk" title="인플렉션">INFQ</span><span class="tk" title="아이온큐">IONQ</span><span class="tk" title="루멘텀 홀딩스">LITE</span><span class="tk" title="오클로">OKLO</span><span class="tk" title="뉴스케일 파워">SMR</span><span class="tk" title="스페이스X">SPCX</span></div></td></tr><tr><th scope="row"><span class="rid">R4N</span><span class="rt">적자·순부채</span></th><td><code>SPS × EV/S 하위 25% − 주당 순부채</code><p>R4 인데 순현금이 음수면 자동으로 넘어온다.</p><div class="tks"><span class="tk" title="메타플래닛">3350.T</span><span class="tk" title="블룸에너지">BE</span><span class="tk" title="코어위브">CRWV</span><span class="tk" title="아이렌">IREN</span><span class="tk" title="랙스페이스 테크놀로지">RXT</span><span class="tk" title="비스트라">VST</span></div></td></tr><tr><th scope="row"><span class="rid">R10</span><span class="rt">ETF 배당형</span></th><td><code>주당 연배당 ÷ 과거 배당수익률 상위 25%</code><p>ETF·신탁. 과거 앵커 시점의 배당수익률 중 높은 쪽(= 싼 가격)을 쓴다. 현재가는 앵커에서 뺐다.</p><div class="tks"><span class="tk" title="KODEX 인도Nifty50">453810</span><span class="tk" title="퍼스트트러스트 사이버보안">CIBR</span><span class="tk" title="인베스코 나스닥100">QQQM</span><span class="tk" title="슈왑 US 디비던드 에쿼티">SCHD</span><span class="tk" title="아이셰어즈 실버 트러스트">SLV</span><span class="tk" title="SPDR 포트폴리오 S&amp;P500">SPYM</span><span class="tk" title="SPDR 필수소비재 셀렉트">XLP</span><span class="tk" title="SPDR 헬스케어 셀렉트">XLV</span></div></td></tr><tr><th scope="row"><span class="rid">R10P</span><span class="rt">ETF 대리</span></th><td><code>현재가 × 동일 지수 ETF 의 (시작가 ÷ 현재가)</code><p>같은 지수를 추종하는 ETF 가 있을 때.</p><div class="tks"><span class="tk" title="SPDR 포트폴리오 나스닥100">QNDX</span></div></td></tr></tbody>
+  </table></div>
+  <p class="note">R5 폐기 · R7 결번(재배정하지 않는다). 성호전자는 파생평가익이 EPS·BPS 를 같이 오염시켜 어떤 규칙도 배정하지 않는다.</p>
+</section>
+
+<section id="self">
+  <h2>자기 평균 대비 — 상장 5년 이상 / 미만</h2>
+  <p class="lead">2026-09-26 확인. 지금 저평가 12 · 혼재 2 · 고평가 13 · 관문 탈락 10 · 보류(적자) 1 · 미수집 2 · 해당 없음(ETF) 9 · 산출 보류 1.</p>
+  <div class="gate">
+    <div class="box">
+      <h4>5년 이상 — 자기 이력과 비교</h4>
+      <ol>
+        <li><b>조건</b>: 상장 5년 이상 <b>그리고</b> 주 지표 관측 16분기 이상. 소스가 상장일을 안 주면 관측 수로만 가르고 그 사실을 적는다.</li>
+        <li><b>주 지표</b>: 순환주(R3)는 PBR, 나머지는 PER. 다른 하나가 보조 지표.</li>
+        <li><b>평균은 중앙값</b>: 적자 직후 분기의 수백 배 PER 이 평균을 끌어올린다(AMZN 평균 60배 vs 중앙값 45배).</li>
+        <li><span class="st u">저평가</span> 둘 다 중앙값 아래 · <span class="st b">혼재</span> 하나만 · <span class="st o">고평가</span> 둘 다 위</li>
+        <li><b>EPS 꼬리표</b>: TTM EPS 가 5년 평균의 90% 아래면 '이익 감소'(순환주는 70%). 순환주가 2배를 넘으면 '이익 정점'. 판정은 바꾸지 않는다.</li>
+        <li>TTM 적자면 <span class="st m">보류</span>.</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h4>5년 미만 — 생존 먼저, 그다음 성장 대비 배수</h4>
+      <ol>
+        <li><b>관문</b>: 현금 ÷ 연간 잉여현금 소진 2년 이상, 발행주식수 증가 20% 이하. 하나라도 걸리면 <span class="st o">관문 탈락</span>.</li>
+        <li><b>흑자</b>: PEG 1 이하 저평가 · 1.5 이하 적정 · 그 위 고평가.</li>
+        <li><b>적자</b>: EV/S ÷ 매출 3년 연평균 성장률(%) 0.2 이하 저평가 · 0.4 이하 적정 · 그 위 고평가.</li>
+        <li>5년·16분기를 채우면 자동으로 왼쪽 규칙으로 넘어간다.</li>
+      </ol>
+    </div>
+  </div>
+  <p class="note">현재 배수는 밴드와 같은 자로 잰다(소스의 PER·PBR). 예외는 둘 — 정상화 EPS 를 쓰는 R1 종목과 원문으로 BPS 를 갈아끼운 종목. 페이지는 살아있는 시세로 위치를 다시 잰다.</p>
+</section>
+
+<section id="net">
+  <h2>순점 — 가점 11점 − 감점 11점</h2>
+  <p class="lead">판정 항목이 3개(또는 적용 항목 수) 미만이면 합계를 내지 않고 미평가로 둡니다. 비교할 때는 종목의 만점 대비로 환산한 값을 씁니다.</p>
+  <h3>감점</h3>
+  <div class="tbl"><table><thead><tr><th>항목</th><th>최대</th><th>기준</th></tr></thead><tbody><tr><td>잉여현금 적자</td><td class="n">−3</td><td>TTM 잉여현금흐름이 마이너스</td></tr><tr><td>설비투자 과중</td><td class="n">−3</td><td>설비투자가 영업현금흐름의 80% 초과 (구간별 1~3점)</td></tr><tr><td>잉여현금 감소</td><td class="n">−1</td><td>TTM 잉여현금이 전년보다 감소</td></tr><tr><td>국채 미달</td><td class="n">−2</td><td>이익수익률이 미국 10년물보다 낮음</td></tr><tr><td>이익 품질</td><td class="n">−2</td><td>비반복 손익이 이익의 30% 초과</td></tr></tbody></table></div>
+  <h3>가점</h3>
+  <div class="tbl"><table><thead><tr><th>축 · 항목</th><th>최대</th><th>기준</th></tr></thead><tbody><tr><td><span class="ax">현금 창출력</span>잉여현금 마진</td><td class="n">+3</td><td>매출에서 잉여현금이 얼마나 남는가 (8%↑ +1 · 15%↑ +2 · 25%↑ +3)</td></tr><tr><td><span class="ax">현금 창출력</span>잉여현금 증가</td><td class="n">+1</td><td>TTM 잉여현금이 전년보다 늘었다 — 감점의 &#x27;잉여현금 감소&#x27;를 뒤집은 항목</td></tr><tr><td><span class="ax">자본 효율</span>투하자본 수익률</td><td class="n">+3</td><td>번 돈이 자본비용을 넘는가 (8%↑ +1 · 12%↑ +2 · 20%↑ +3)</td></tr><tr><td><span class="ax">자본 효율</span>차입 부담 낮음</td><td class="n">+1</td><td>차입금이 잉여현금의 2배 미만 — 2년치 현금으로 빚을 다 갚는다</td></tr><tr><td><span class="ax">주주 환원</span>주식수 감소</td><td class="n">+1</td><td>자사주 매입·소각으로 발행주식이 전년 대비 0.5% 넘게 줄었다</td></tr><tr><td><span class="ax">주주 환원</span>배당 성장 지속</td><td class="n">+1</td><td>배당을 5년 이상 연속으로 늘려왔다</td></tr><tr><td><span class="ax">주주 환원</span>총주주환원율</td><td class="n">+1</td><td>자사주 수익률 + 배당수익률이 4%를 넘는다</td></tr></tbody></table></div>
+</section>
+
+<section id="check">
+  <h2>체크리스트 — 5점 만점, 순점과 따로</h2>
+  <p class="lead">원본 100문항 + 보강 10문항. 투자자에 대한 질문 35문항은 종목별로 매기지 않고, 판단 문항 54개는 사람이 근거를 적을 때까지 <b>미채점</b>입니다. 소스가 없는 7문항은 미수집으로 둡니다. 아래 19문항만 수집값으로 채점합니다 — 5 = 투자자에게 가장 좋음.</p>
+  <div class="tbl"><table><thead><tr><th>#</th><th>문항</th><th>5점 구간 (5 · 4 · 3 · 2 · 1 경계)</th></tr></thead><tbody><tr><td class="n">11</td><td>최근 5-10년 매출 성장 추이는 어떠한가?</td><td>3년 매출 연평균 성장 20%↑ 5 · 10 · 5 · 0 · 역성장 1</td></tr><tr><td class="n">13</td><td>ROE(자기자본이익률)가 15% 이상 지속되는가?</td><td>ROE 5년 중앙값 25%↑ 5 · 15 · 10 · 5 · 그 아래 1</td></tr><tr><td class="n">14</td><td>ROIC(투하자본이익률)가 자본비용(WACC)을 상회하는가?</td><td>ROIC − WACC +10%p↑ 5 · +5 · 0 · −5 · 그 아래 1</td></tr><tr><td class="n">15</td><td>부채비율(D/E)이 업종 평균 대비 적정한가?</td><td>차입금 ÷ 잉여현금 1년↓ 5 · 2 · 4 · 8 · 그 위 1 (잉여현금 적자 1)</td></tr><tr><td class="n">16</td><td>이자보상배율(Interest Coverage Ratio)이 충분한가?</td><td>이자보상배율 20배↑ 5 · 8 · 3 · 1 · 1배 미만 1</td></tr><tr><td class="n">17</td><td>현금흐름(영업/투자/재무)이 건전한가?</td><td>영업CF ÷ 순이익 1.3↑ 5 · 1.0 · 0.8 · 0.5 · 그 아래 1</td></tr><tr><td class="n">18</td><td>잉여현금흐름(FCF)이 꾸준히 창출되는가?</td><td>잉여현금 마진 20%↑ 5 · 10 · 5 · 0 · 적자 1</td></tr><tr><td class="n">20</td><td>감가상각과 자본지출(CAPEX)의 관계는 적절한가?</td><td>설비투자 ÷ 영업CF 40%↓ 5 · 60 · 80 · 100 · 그 위 1</td></tr><tr><td class="n">21</td><td>PER(주가수익비율)이 과거 5-10년 평균 대비 어떤 수준인가?</td><td>PER 5년 위치 10%↓ 5 · 30 · 50 · 75 · 그 위 1</td></tr><tr><td class="n">22</td><td>PBR(주가순자산비율)이 업종 및 역사적 평균 대비 어떠한가?</td><td>PBR 5년 위치 10%↓ 5 · 30 · 50 · 75 · 그 위 1</td></tr><tr><td class="n">23</td><td>PEG Ratio(성장 대비 PER)가 1 이하인가?</td><td>PEG 0.5↓ 5 · 1.0 · 1.5 · 2.0 · 그 위 1</td></tr><tr><td class="n">24</td><td>EV/EBITDA는 동종 업계 대비 어떠한가?</td><td>EV/EBITDA 자기 이력 위치 10%↓ 5 · 30 · 50 · 75 · 그 위 1</td></tr><tr><td class="n">25</td><td>배당수익률과 배당성장률은 어떤가?</td><td>연속 증배 10년↑ 5 · 5 · 3 · 1 · 0년 1 (삭감 1 · 무배당 해당 없음)</td></tr><tr><td class="n">27</td><td>안전마진(Margin of Safety)이 충분한가?</td><td>현재가 ÷ 시작가 0.70↓ 5 · 0.85 · 1.00 · 1.15 · 그 위 1</td></tr><tr><td class="n">28</td><td>주가/매출액 비율(PSR)이 합리적인가?</td><td>P/S 자기 이력 위치 10%↓ 5 · 30 · 50 · 75 · 그 위 1</td></tr><tr><td class="n">29</td><td>자사주 매입 정책이 있는가?</td><td>주식수 −2%↓ 5 · −0.5 · +0.5 · +3 · 그 위 1</td></tr><tr><td class="n">30</td><td>주주환원율(배당+자사주매입)은 얼마인가?</td><td>배당+자사주 6%↑ 5 · 4 · 2 · 0.5 · 그 아래 1</td></tr><tr><td class="n">35</td><td>금리 환경 변화가 밸류에이션에 미치는 영향은?</td><td>이익수익률 − 국채 +3%p↑ 5 · +1 · 0 · −2 · 그 아래 1</td></tr><tr><td class="n">37</td><td>경영진이 자사주를 상당량 보유하고 있는가?</td><td>내부자 지분 15%↑ 5 · 5 · 1 · 0.1 · 그 아래 1</td></tr></tbody></table></div>
+  <p class="note">해당 없음(금융업의 잉여현금 · 무배당의 배당 성장 · Floor 종목의 안전마진)은 모르는 것과 달라서 평균에서 뺀다. 21·22·24·28번은 동종 대비가 아니라 자기 이력 대비다.</p>
+</section>
+
+<section id="pending">
+  <h2>확인을 기다리는 규칙</h2>
+  <p class="lead">판정을 바꾸는 변경이라 사용자 확인 전에는 넣지 않습니다.</p>
+  <ul class="pend"><li><b>R3 밴드 끝</b> — R3 목표 PBR 을 밴드 하위 25%로 둔다(현행). 외부 분석 문서들도 매수선을 늘 밴드의 싼 쪽 절반에 둔다 — 현행 유지를 권한다.</li><li><b>금리를 시작가에</b> — 밴드 창의 평균 10년물은 3.81%인데 지금은 5%대다. 요구수익률로 환산하면 시작가를 12.7% 낮춰야 한다. 적용하면 저평가 후보가 줄어든다.</li><li><b>수익성 항</b> — R3 의 BPS × 과거 PBR 에는 이익이 들어가지 않는다. 자기 평균 대비 판정의 EPS 추세 꼬리표가 이 문제의 일부를 덮는다.</li></ul>
+</section>
+
+<section id="common">
+  <h2>공통 원칙</h2>
+  <ul class="pend">
+    <li><b>수집 안 된 값은 추정하지 않는다.</b> 미산출은 못 구함 · 규칙 없음 · 일부러 안 냄으로 구분해 적는다.</li>
+    <li><b>시장 국면은 점수에 더하지 않는다.</b> 모든 종목에 같은 값을 더하면 순위가 그대로고, 시장 하락은 이미 비율에 들어 있다. 국면은 문턱만 움직인다(금리 스트레스면 순점 +5 이상).</li>
+    <li><b>밴드 폭이 3배를 넘으면 경고한다.</b> 창 안에 체제 변화가 섞이면 사분위수가 어느 쪽도 대표하지 못한다.</li>
+    <li><b>규칙을 바꾸면 규칙 판을 올린다.</b> 판이 다른 구간의 점수는 다른 자로 잰 것이라 섞어 비교하지 않는다.</li>
+  </ul>
+</section>
+
+<footer><a href="./" style="color:var(--accent)">← 워치리스트로</a><br>tools/build_rules.py 가 refresh.py 의 상수와 마지막 수집 결과로 만든다. 손으로 고치지 않는다.</footer>
+</div>
+
+</body>
+</html>
