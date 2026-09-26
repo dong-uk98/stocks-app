@@ -5,7 +5,7 @@
  * 잠깐 느린 쪽보다 나쁘다. 네트워크가 죽으면 그때만 캐시를 주고, 페이지가 '오프라인'
  * 이라고 적는다.
  */
-var VER = "v3";   // v3: 규칙집(rules.html)·자기평균·체크 5점 — 껍데기가 바뀌면 올린다
+var VER = "v4";   // v4: 카드마다 종목별 체크리스트(127문항) — 껍데기가 바뀌면 올린다
 var SHELL = "wl-shell-" + VER;
 var DATA  = "wl-data-" + VER;
 var FILES = ["./", "./index.html", "./rules.html", "./manifest.webmanifest",
