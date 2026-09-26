@@ -76,25 +76,23 @@
 <div class="wrap">
 <header>
   <h1>원장 규칙집</h1>
-  <div class="meta">규칙 판 2026-09-26+d5ed20185bba · 종목 배정 기준 2026-09-26 01:13 UTC · 50종목</div>
+  <div class="meta">규칙 판 2026-09-26+d5ed20185bba · 종목 배정 기준 2026-09-26 01:29 UTC · 50종목</div>
 </header>
 <nav aria-label="목차">
   <a href="#axes">네 개의 축</a><a href="#start">시작가 규칙</a><a href="#self">자기 평균 대비</a>
-  <a href="#net">순점</a><a href="#check">체크리스트 127문항</a><a href="#pending">확인 대기</a><a href="#common">공통 원칙</a>
+  <a href="#net">순점 항목</a><a href="#check">체크리스트 127문항</a><a href="#pending">확인 대기</a><a href="#common">공통 원칙</a>
 </nav>
 
 <section id="axes">
-  <h2>네 개의 축은 서로 섞지 않는다</h2>
-  <p class="lead">원장은 한 종목을 네 가지로 따로 잽니다. 둘은 가격(얼마면 싼가), 둘은 질(어떤 회사인가)입니다. 서로 더하지 않습니다 — 싼 것과 좋은 것은 다른 질문입니다.</p>
+  <h2>세 개의 축은 서로 섞지 않는다</h2>
+  <p class="lead">원장은 한 종목을 셋으로 따로 잽니다. 둘은 가격(얼마면 싼가), 하나는 질(어떤 회사인가)입니다. 서로 더하지 않습니다 — 싼 것과 좋은 것은 다른 질문입니다. 질 점수는 체크리스트 하나이고, 예전의 순점은 그 안에 들어 있습니다(2026-09-26).</p>
   <div class="axes">
     <div class="axis"><b>비율</b><div class="q">현재가 ÷ 저평가 시작가</div>
       <p><span class="st u">저평가 후보</span> 1.00 미만 · <span class="st b">밴드 하단 부근</span> 1.15 이하 · <span class="st o">고평가 신호</span> 그 위</p></div>
     <div class="axis"><b>자기 평균 대비</b><div class="q">PER·PBR 5년 중앙값 위치</div>
       <p>상장 5년 이상과 미만을 다르게 봅니다. 비율과 나란히 보여 주고, 어느 쪽이 맞는지는 평점 추적이 가립니다.</p></div>
-    <div class="axis"><b>순점</b><div class="q">가점 11 − 감점 11</div>
-      <p>잉여현금·설비투자·국채 대비 이익·이익 품질·주주 환원. 금융업은 성립하지 않는 항목을 분모에서 뺍니다.</p></div>
-    <div class="axis"><b>체크리스트</b><div class="q">문항별 1~5점 · 평균</div>
-      <p>수집값으로 근거를 댈 수 있는 127문항을 종목마다 채점합니다. 순점 항목도 여기 들어 있습니다.</p></div>
+    <div class="axis"><b>점수 — 체크리스트</b><div class="q">127문항 · 문항별 1~5점 · 평균</div>
+      <p>순점(가점 11 − 감점 11)과 그 12항목이 N 카테고리로 들어 있습니다. 집중 투자 문턱은 정상 <b>3.0</b> · 금리 스트레스 <b>3.5</b> 이상, 일반 비중 2.8 이상, 2.2 미만은 제외.</p></div>
   </div>
 </section>
 
@@ -137,8 +135,8 @@
 </section>
 
 <section id="net">
-  <h2>순점 — 가점 11점 − 감점 11점</h2>
-  <p class="lead">판정 항목이 3개(또는 적용 항목 수) 미만이면 합계를 내지 않고 미평가로 둡니다. 비교할 때는 종목의 만점 대비로 환산한 값을 씁니다.</p>
+  <h2>순점 항목 — 체크리스트 N 카테고리의 원본</h2>
+  <p class="lead">가점 11점 − 감점 11점. 이 계산은 그대로 하고, 결과를 체크리스트 N01~N13 으로 5점 척도에 옮깁니다. 판정 항목이 3개(또는 적용 항목 수) 미만이면 합계를 내지 않고 미평가로 둡니다.</p>
   <h3>감점</h3>
   <div class="tbl"><table><thead><tr><th>항목</th><th>최대</th><th>기준</th></tr></thead><tbody><tr><td>잉여현금 적자</td><td class="n">−3</td><td>TTM 잉여현금흐름이 마이너스</td></tr><tr><td>설비투자 과중</td><td class="n">−3</td><td>설비투자가 영업현금흐름의 80% 초과 (구간별 1~3점)</td></tr><tr><td>잉여현금 감소</td><td class="n">−1</td><td>TTM 잉여현금이 전년보다 감소</td></tr><tr><td>국채 미달</td><td class="n">−2</td><td>이익수익률이 미국 10년물보다 낮음</td></tr><tr><td>이익 품질</td><td class="n">−2</td><td>비반복 손익이 이익의 30% 초과</td></tr></tbody></table></div>
   <h3>가점</h3>

@@ -202,7 +202,7 @@
         <input id="q" type="search" placeholder="종목·티커 검색" autocomplete="off" enterkeyhint="search">
         <select id="sort">
           <option value="r">비율순</option>
-          <option value="net">순점순</option>
+          <option value="net">점수순</option>
           <option value="t">티커순</option>
         </select>
       </div>
@@ -291,14 +291,13 @@
       + '<div class="c-b">'
       + '<div><i>현재</i><span>' + fmtPx(s.px, s.c) + '</span></div>'
       + '<div><i>' + (s.st === "floor" ? "순현금 Floor" : "시작가") + '</i><span>' + fmtPx(s.sp, s.c) + '</span></div>'
-      + '<div><i>순점</i><span>' + fmtNet(s.net) + (s.nrm != null && s.nrm !== s.net
-          ? ' <small style="opacity:.65">(' + fmtNet(s.nrm) + ')</small>' : '') + '</span></div>'
+      // 질 점수 = 체크리스트 평균(5점). 순점은 2026-09-26 에 체크리스트 N 카테고리로 합쳤다
+      + '<div><i>점수</i><span>' + (s.cl ? s.cl.avg.toFixed(2) + '<small style="opacity:.65">/5</small>' : '—') + '</span></div>'
       + '</div><div class="c-f"><span class="bd">' + esc(LB[s.st] || s.st) + '</span>';
     // 자기 평균 대비 판정 — 비율과 따로 본다(규칙집 참고). ETF 는 해당 없음이라 안 붙인다
     if(s.sv && s.sv.v && s.sv.v !== "na")
       h += '<span class="sv ' + esc(s.sv.v) + '" title="' + esc((s.sv.why || "") + (s.sv.tags && s.sv.tags.length ? " · " + s.sv.tags.join(" · ") : "")) + '">자기평균 '
          + esc(SVL[s.sv.v] || s.sv.v) + (s.sv.tags && s.sv.tags.some(function(x){ return x.indexOf("이익") === 0; }) ? " ⚠" : "") + '</span>';
-    if(s.cl) h += '<span class="cl" title="체크리스트 ' + s.cl.n + '문항 평균 (5점 만점)">체크 ' + s.cl.avg.toFixed(1) + '/5</span>';
     // 규칙은 번호만 적으면 읽는 사람이 매번 규칙표를 찾아야 한다 — 뜻을 같이 적는다
     if(s.rule){
       var rm = RMAP[s.rule];
@@ -348,7 +347,7 @@
 
   function render(){
     var rows = D.stocks.filter(pass);
-    if(sortBy === "net") rows.sort(function(a,b){ return (b.net == null ? -99 : b.net) - (a.net == null ? -99 : a.net); });
+    if(sortBy === "net") rows.sort(function(a,b){ return (b.cl ? b.cl.avg : -99) - (a.cl ? a.cl.avg : -99); });
     else if(sortBy === "t") rows.sort(function(a,b){ return a.t < b.t ? -1 : 1; });
     else rows.sort(function(a,b){
       // Floor 비율은 다른 규칙의 비율과 뜻이 달라 같은 줄에 세우지 않는다 — 뒤로 뺀다.
