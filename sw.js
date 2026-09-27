@@ -8,7 +8,7 @@
  * 잠깐 느린 쪽보다 나쁘다. 네트워크가 죽으면 그때만 캐시를 주고, 페이지가 '오프라인'
  * 이라고 적는다.
  */
-var VER = "v6";   // v6: 화면 network-first · 카드에 점수·질 판정 — 껍데기가 바뀌면 올린다
+var VER = "v7";   // v7: AI 노출(대체 위험·해자 약화·자금 동조) · v6: 화면 network-first — 껍데기가 바뀌면 올린다
 var SHELL = "wl-shell-" + VER;
 var DATA  = "wl-data-" + VER;
 var FILES = ["./", "./index.html", "./rules.html", "./manifest.webmanifest",

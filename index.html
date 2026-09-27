@@ -122,6 +122,12 @@
   .c[data-st="over"]  .bd{background:color-mix(in srgb,var(--over) 14%,transparent);color:var(--over)}
   .sv{font-size:10.5px;padding:1px 6px;border:1px solid currentColor;border-radius:999px;color:var(--muted)}
   .sv.under{color:var(--under)} .sv.mixed,.sv.fair{color:var(--band)} .sv.over,.sv.risk{color:var(--over)}
+  .ai{font-size:10.5px;padding:1px 6px;border:1px solid currentColor;border-radius:999px;color:var(--muted)}
+  .ai.hi{color:var(--over);font-weight:600} .ai.mid{color:var(--band)} .ai.mo{color:var(--over);border-style:dashed}
+  .ai.fl{color:var(--accent)}
+  .c details .ais{font-size:12px;color:var(--ink-2);margin-top:6px;line-height:1.55}
+  .c details .ais li{margin:3px 0} .c details .ais code{font-size:10.5px;color:var(--accent)}
+  .airb li{margin:4px 0;font-size:12.5px;line-height:1.5} .airb b{font-family:var(--mono)}
   .cl{font-family:var(--mono);font-size:10.5px;color:var(--ink-2)}
   .tg{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--line);
       border-radius:3px;padding:1px 5px}
@@ -227,6 +233,7 @@
         <b>집중 투자</b>는 점수 3.0 이상(금리 스트레스 국면 3.5), <b>일반 비중</b> 2.8 이상, 2.2 미만은 제외.
         카드의 <b>체크리스트</b>를 펼치면 문항별 점수를 본다. 문항 구간 전부는 <a href="./rules.html">규칙집</a>에.</p></div>
     <div class="sec"><h2>적용 규칙</h2><div id="ruleList"></div></div>
+    <div class="sec"><h2>AI 노출 기준</h2><div id="aiRule"></div></div>
     <p class="note">종목마다 <b>어떤 값으로 시작가를 냈는지</b>가 다르다. 같은 0.8이어도 R1의 0.8과
       R4의 0.8은 뜻이 다르다 — R4는 적정가가 아니라 하방 바닥이라 <b>비율을 서로 견주면 안 된다</b>.
       규칙을 누르면 그 규칙으로 낸 종목만 워치 탭에 보인다.</p>
@@ -264,7 +271,7 @@
             floor:"Floor 대비", nodata:"시작가 미수집", norule:"규칙 미적용",
             blocked:"산출 보류", none:"시작가 미수집"};
   var CHIPS = [{k:"all",l:"전체"},{k:"both",l:"두 축 통과"},{k:"under",l:"저평가"},{k:"q30",l:"점수 3.0↑"},
-               {k:"band",l:"밴드"},{k:"over",l:"고평가"},{k:"floor",l:"Floor"},{k:"na",l:"미산출"}];
+               {k:"aihi",l:"AI 대체 높음"},{k:"band",l:"밴드"},{k:"over",l:"고평가"},{k:"floor",l:"Floor"},{k:"na",l:"미산출"}];
   var NA = {nodata:1, norule:1, blocked:1, none:1};
 
   function esc(s){ return String(s == null ? "" : s)
@@ -308,6 +315,7 @@
     if(filt === "q30") return !!(s.cl && s.cl.avg >= (D.qual ? D.qual.focus : 3.0));
     // 원장(checklist.py)과 같은 조건 — 비율 1 미만 · 점수 3.0 이상 · 밴드 폭 경고 없음(관문 G5)
     if(filt === "both") return both(s);
+    if(filt === "aihi") return !!(s.ai && s.ai.a && s.ai.a.g === "높음");
     return s.st === filt;
   }
 
@@ -332,6 +340,13 @@
     if(s.sv && s.sv.v && s.sv.v !== "na")
       h += '<span class="sv ' + esc(s.sv.v) + '" title="' + esc((s.sv.why || "") + (s.sv.tags && s.sv.tags.length ? " · " + s.sv.tags.join(" · ") : "")) + '">자기평균 '
          + esc(SVL[s.sv.v] || s.sv.v) + (s.sv.tags && s.sv.tags.some(function(x){ return x.indexOf("이익") === 0; }) ? " ⚠" : "") + '</span>';
+    // AI 노출 — 판정에 안 쓰는 참고값(원장 AI 노출 구역과 같은 값)
+    var X = s.ai;
+    if(X){
+      if(X.a && X.a.g) h += '<span class="ai ' + (X.a.g === "높음" ? "hi" : X.a.g === "중간" ? "mid" : "") + '">AI대체 ' + esc(X.a.g) + '</span>';
+      if(X.m && X.m.flag) h += '<span class="ai mo">해자 약화</span>';
+      if(X.lb && /동조/.test(X.lb)) h += '<span class="ai fl">' + esc(X.lb) + '</span>';
+    }
     // 규칙은 번호만 적으면 읽는 사람이 매번 규칙표를 찾아야 한다 — 뜻을 같이 적는다
     if(s.rule){
       var rm = RMAP[s.rule];
@@ -345,6 +360,25 @@
     // 종목별 체크리스트 — 펼칠 때 그린다(문항 120여 개를 카드마다 미리 그리면 목록이 무거워진다)
     if(s.cl) h += '<details class="clx" data-t="' + esc(s.t) + '"><summary>체크리스트 '
       + s.cl.avg.toFixed(2) + '/5 · ' + s.cl.n + '문항</summary><div class="clb"></div></details>';
+    if(X && (X.a || X.b != null)){
+      h += '<details><summary>AI 노출' + (X.a && X.a.g ? ' · 대체 ' + esc(X.a.g) : '') + '</summary><div class="ais">';
+      if(X.a){
+        if(X.a.g) h += '<div><b>대체 위험 ' + esc(X.a.g) + '</b>' + (X.a.sc != null ? ' · ' + X.a.sc.toFixed(2) + '/3' : '')
+          + (X.a.hi ? ' · 높음 부문 ' + Math.round(X.a.hi * 100) + '%' : '')
+          + (X.a.ad || X.a.ai ? ' · AI 수요 직접 ' + Math.round((X.a.ad || 0) * 100) + '% · 간접 ' + Math.round((X.a.ai || 0) * 100) + '%' + (X.a.etf ? '(상한)' : '') : '')
+          + (X.a.etf && X.a.cov != null && X.a.cov < 1 ? ' · 채점 ' + Math.round(X.a.cov * 100) + '%' : '') + '</div>';
+        else if(X.a.nw) h += '<div>' + esc(X.a.nw) + '</div>';
+        h += '<ul style="padding-left:16px;margin:4px 0">' + (X.a.segs || []).map(function(g){
+          return '<li><b>' + esc(g.n) + '</b> ' + (g.w != null ? (X.a.etf ? (g.w * 100).toFixed(1) : Math.round(g.w * 100)) + '% · ' : '')
+            + esc(g.sub) + (g.code ? ' <code>[' + esc(g.code) + ']</code>' : '') + (g.why ? ' — ' + esc(g.why) : '') + '</li>';
+        }).join("") + '</ul><div style="color:var(--muted)">출처: ' + esc(X.a.src || "") + '</div>';
+      }
+      if(X.m) h += '<div style="margin-top:6px"><b>' + (X.m.flag ? '해자 약화' : '해자 ' + esc((X.m.e || []).join("·"))) + '</b> · 총이익률 ' + X.m.gm + '% — ' + esc(X.m.why || "") + '</div>';
+      if(X.b != null) h += '<div style="margin-top:6px"><b>자금 동조 ' + esc(X.lb || "") + '</b> · AI 베타 ' + (X.b >= 0 ? "+" : "") + X.b.toFixed(2)
+        + ' (t ' + X.tt.toFixed(1) + ', ' + X.n + '주)' + (X.ds != null ? ' · 딥시크 당일 ' + X.ds.toFixed(1) + '% (지수 대비 ' + X.dsx.toFixed(1) + '%p)' : '') + '</div>';
+      else if(X.nw) h += '<div style="margin-top:6px">자금 동조: ' + esc(X.nw) + '</div>';
+      h += '</div></details>';
+    }
     if(s.why || s.warn){
       h += '<details><summary>산출 근거' + (s.warn ? " · 주의" : "") + '</summary>';
       var rm2 = RMAP[s.rule];
@@ -401,6 +435,7 @@
       if(NA[s.st]) n.na++; else n[s.st] = (n[s.st] || 0) + 1;
       if(s.cl && s.cl.avg >= Qf) n.q30++;
       if(both(s)) n.both++;
+      if(s.ai && s.ai.a && s.ai.a.g === "높음") n.aihi = (n.aihi || 0) + 1;
     });
     document.getElementById("chips").innerHTML = CHIPS.map(function(c){
       return '<button data-f="' + c.k + '" aria-pressed="' + (c.k === filt) + '">'
@@ -443,6 +478,20 @@
             return '<i>' + esc(nameOf(t)) + '</i>'; }).join("") + '</div>'
         + '</div>';
     }).join("") || '<p class="empty">규칙 정보가 없다.</p>';
+  }
+
+  function renderAiRule(){
+    var R = D.airub, el = document.getElementById("aiRule");
+    if(!R){ el.innerHTML = '<p class="empty">AI 노출 기준이 아직 없다.</p>'; return; }
+    function li(k, v){ return '<li><b>' + esc(k) + '</b> ' + (Array.isArray(v) ? '<i>' + esc(v[0]) + '에서 출발</i> — ' + esc(v[1]) : esc(v)) + '</li>'; }
+    el.innerHTML = '<p class="note" style="margin-top:0"><b>판정(비율·점수)에 쓰지 않는 참고값이다.</b> 판 ' + esc(R.ver) + '. ' + esc(R.how) + '</p>'
+      + (R.stance ? '<p class="note"><b>' + esc(R.stance) + '</b></p>' : '')
+      + '<ul class="airb">' + Object.keys(R.start).map(function(k){ return li(k, R.start[k]); }).join("") + '</ul>'
+      + '<p class="note"><b>조정</b> — ' + esc(R.adjust.note) + '</p>'
+      + '<ul class="airb">' + ["U1","D","B1","B2","B3","B4","B5"].map(function(k){ return li(k, R.adjust[k]); }).join("") + '</ul>'
+      + '<p class="note"><b>해자 약화</b> — ' + esc(R.moat.what) + ' ' + esc(R.moat.rule) + '</p>'
+      + '<ul class="airb">' + ["E0","E1","E2","E3","E4"].map(function(k){ return li(k, R.moat[k]); }).join("") + '</ul>'
+      + '<p class="note">' + esc(R.score) + ' 자금 동조는 주간 수정주가로 SMH(반도체 ETF)가 미국 시장보다 더 간 몫에 대한 기울기다.</p>';
   }
 
   function nameOf(t){
@@ -497,7 +546,7 @@
     document.getElementById("cnt").textContent = D.count == null ? D.stocks.length : D.count;
     RMAP = {};
     (D.rules || []).forEach(function(r){ RMAP[r.id] = r; });
-    chips(); render(); renderRules(); renderMkt(); renderCheck();
+    chips(); render(); renderRules(); renderAiRule(); renderMkt(); renderCheck();
   }
 
   // ── 조작 ────────────────────────────────
@@ -585,7 +634,7 @@
 
 <footer class="wrap">
   조회 전용 스냅샷 · 값의 원본은 아티팩트 원장이다. 투자 판단의 근거가 아니라 내가 세운 규칙의 출력이다.
-  <span class="ver">· 화면 v6</span>
+  <span class="ver">· 화면 v7</span>
 </footer>
 </body>
 </html>
