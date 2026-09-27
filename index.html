@@ -192,6 +192,32 @@
   table.tally td.n{text-align:right;font-family:var(--mono);color:var(--ink-2)}
   .note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:12px}
   .note a{color:var(--accent)}
+  /* 실적 달력 — 폰이라 칸에는 건수만, 종목은 아래 날짜순 목록에 */
+  .calm{background:var(--card);border:1px solid var(--line-soft);box-shadow:var(--shadow);padding:10px 10px 8px;margin-bottom:10px}
+  .calm h3{margin:0 0 6px;font-size:14px;display:flex;justify-content:space-between;align-items:baseline}
+  .calm h3 span{font:400 11px var(--mono);color:var(--muted)}
+  .calg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;text-align:center}
+  .calg .wd{font-size:10.5px;color:var(--muted)}
+  .calg .sun{color:var(--over)}
+  .cald{appearance:none;border:0;background:none;font:inherit;color:inherit;min-height:38px;padding:2px 0;
+    border-top:1px solid var(--line-soft);display:flex;flex-direction:column;align-items:center;gap:2px}
+  .cald .dn{font:500 11px var(--mono);color:var(--ink-2)}
+  .cald.sun .dn{color:var(--over)}
+  .cald.past{opacity:.45}
+  .cald.today{background:var(--accent-soft)}
+  .cald .n{min-width:18px;font:600 10.5px/1.6 var(--mono);border-radius:9px;border:1px dashed var(--accent);color:var(--accent)}
+  .cald .n.cf{border-style:solid;background:var(--accent);color:var(--card)}
+  .cald[data-d]{cursor:pointer}
+  .cday{padding:9px 0;border-bottom:1px dashed var(--line-soft);scroll-margin-top:12px}
+  .cday.hl{background:var(--accent-soft)}
+  .cday .w{display:flex;gap:8px;align-items:baseline}
+  .cday .w b{font:600 13.5px var(--mono)}
+  .cday .w span{font:400 11px var(--mono);color:var(--muted)}
+  .cday ul{list-style:none;margin:5px 0 0;padding:0;display:grid;gap:4px}
+  .cday li{display:flex;flex-wrap:wrap;gap:3px 7px;align-items:baseline;font-size:13px}
+  .cday li i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .etg{font:600 10px/1 var(--sans);padding:3px 5px;border:1px solid var(--accent);color:var(--accent);border-radius:2px}
+  .etg.est{border-style:dashed;border-color:var(--muted);color:var(--muted)}
   footer{padding:18px 14px 8px;border-top:1px solid var(--line-soft);margin-top:18px;
     font-size:11.5px;color:var(--muted);line-height:1.6}
 </style>
@@ -226,6 +252,14 @@
     <div id="list"></div>
   </section>
 
+  <section id="tab-cal" hidden class="wrap">
+    <div class="sec"><h2>실적 달력</h2>
+      <p class="note" style="margin-top:0">다음 실적 발표일. <b>채운 칸은 회사가 공지한 날</b>이 있는 날, 점선은 <b>소스의 추정</b>만 있는 날이다.
+        날짜를 누르면 아래 목록의 그날로 간다. 국내·일본 종목은 대부분 추정이다.</p>
+      <div id="calMonths"></div></div>
+    <div class="sec"><h2>날짜순</h2><div id="calList"></div><div class="note" id="calRest"></div></div>
+  </section>
+
   <section id="tab-rule" hidden class="wrap">
     <div class="sec"><h2>두 축</h2>
       <p class="note" style="margin-top:0"><b>비율</b>(현재가 ÷ 저평가 시작가)은 얼마면 싼가, <b>점수</b>는 어떤 회사인가다.
@@ -257,6 +291,7 @@
 
 <nav id="tabs">
   <button data-tab="watch" aria-selected="true"><span class="g">◧</span>워치</button>
+  <button data-tab="cal" aria-selected="false"><span class="g">▦</span>실적</button>
   <button data-tab="rule" aria-selected="false"><span class="g">§</span>규칙</button>
   <button data-tab="mkt" aria-selected="false"><span class="g">◈</span>시장</button>
   <button data-tab="check" aria-selected="false"><span class="g">✓</span>검산</button>
@@ -494,6 +529,63 @@
       + '<p class="note">' + esc(R.score) + ' 자금 동조는 주간 수정주가로 SMH(반도체 ETF)가 미국 시장보다 더 간 몫에 대한 기울기다.</p>';
   }
 
+  // 실적 달력 — data.json 의 earn(tools/earnings.py). 지난 날짜는 '다음 실적'이 아니라 비워 둔다(R9).
+  function renderCal(){
+    var E = D.earn, box = document.getElementById("calMonths");
+    if(!E){ box.innerHTML = '<p class="empty">실적일이 아직 수집되지 않았다.</p>'; return; }
+    function iso(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+    var today = iso(new Date()), up = [], past = [], none = [], by = {};
+    D.stocks.forEach(function(s){
+      if(E.etf.indexOf(s.t) >= 0) return;
+      var e = E.items[s.t];
+      if(!e || !e.d) none.push(s);
+      else if(e.d < today) past.push({s:s, d:e.d});
+      else { var x = {s:s, d:e.d, est:!!e.est}; up.push(x); (by[e.d] = by[e.d] || []).push(x); }
+    });
+    up.sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+    var WD = ["일","월","화","수","목","금","토"], h = "";
+    if(up.length){
+      var t0 = new Date(up[0].d + "T00:00:00"), y = t0.getFullYear(), m = t0.getMonth();
+      var L = up[up.length - 1].d, ly = +L.slice(0, 4), lm = +L.slice(5, 7) - 1;
+      while(y < ly || (y === ly && m <= lm)){
+        var f = new Date(y, m, 1).getDay(), nd = new Date(y, m + 1, 0).getDate(), c = "", n = 0;
+        for(var i = 0; i < f; i++) c += '<span></span>';
+        for(var d = 1; d <= nd; d++){
+          var k = y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0"), X = by[k] || [];
+          n += X.length;
+          c += '<button type="button" class="cald' + ((f + d - 1) % 7 === 0 ? " sun" : "") + (k < today ? " past" : "") + (k === today ? " today" : "") + '"'
+            + (X.length ? ' data-d="' + k + '"' : ' disabled') + '><span class="dn">' + d + '</span>'
+            + (X.length ? '<span class="n' + (X.some(function(x){ return !x.est; }) ? " cf" : "") + '">' + X.length + '</span>' : '') + '</button>';
+        }
+        h += '<div class="calm"><h3>' + y + '년 ' + (m + 1) + '월<span>' + n + '건</span></h3><div class="calg">'
+          + WD.map(function(w, j){ return '<span class="wd' + (j === 0 ? " sun" : "") + '">' + w + '</span>'; }).join("") + c + '</div></div>';
+        m++; if(m > 11){ m = 0; y++; }
+      }
+    }
+    box.innerHTML = h || '<p class="empty">예정된 실적 발표가 없다.</p>';
+    var T = new Date(today + "T00:00:00");
+    document.getElementById("calList").innerHTML = Object.keys(by).sort().map(function(k){
+      var dt = new Date(k + "T00:00:00"), dd = Math.round((dt - T) / 864e5);
+      return '<div class="cday" id="cd-' + k + '"><div class="w"><b>' + (dt.getMonth() + 1) + '월 ' + dt.getDate() + '일 (' + WD[dt.getDay()] + ')</b><span>'
+        + (dd === 0 ? "오늘" : "D-" + dd) + '</span></div><ul>' + by[k].map(function(x){
+          return '<li><b>' + esc(x.s.n) + '</b><i>' + esc(x.s.t) + '</i><span class="etg' + (x.est ? " est" : "") + '">' + (x.est ? "추정" : "확정") + '</span>'
+            + '<span class="bd" style="font-size:11px">' + esc(LB[x.s.st] || x.s.st) + '</span></li>';
+        }).join("") + '</ul></div>';
+    }).join("");
+    var r = "";
+    if(past.length) r += '<b>다음 날짜 미공지 ' + past.length + '종</b> — 지난 실적만 있다: ' + past.map(function(x){ return esc(x.s.n) + '(' + x.d.slice(5).replace("-", "/") + ')'; }).join(" · ") + '<br>';
+    if(none.length) r += '<b>날짜 없음</b> — ' + none.map(function(s){ return esc(s.n); }).join(" · ") + '<br>';
+    if(E.etf.length) r += 'ETF·신탁 ' + E.etf.length + '종은 실적 발표가 없다.<br>';
+    r += '수집 ' + esc(E.asof.slice(0, 16).replace("T", " ")) + ' UTC · stockanalysis.com';
+    document.getElementById("calRest").innerHTML = r;
+  }
+  document.getElementById("calMonths").addEventListener("click", function(e){
+    var b = e.target.closest(".cald[data-d]"); if(!b) return;
+    var el = document.getElementById("cd-" + b.getAttribute("data-d")); if(!el) return;
+    [].forEach.call(document.querySelectorAll(".cday.hl"), function(x){ x.classList.remove("hl"); });
+    el.classList.add("hl"); el.scrollIntoView({behavior:"smooth", block:"start"});
+  });
+
   function nameOf(t){
     for(var i = 0; i < D.stocks.length; i++) if(D.stocks[i].t === t) return D.stocks[i].n;
     return t;
@@ -546,7 +638,7 @@
     document.getElementById("cnt").textContent = D.count == null ? D.stocks.length : D.count;
     RMAP = {};
     (D.rules || []).forEach(function(r){ RMAP[r.id] = r; });
-    chips(); render(); renderRules(); renderAiRule(); renderMkt(); renderCheck();
+    chips(); render(); renderRules(); renderAiRule(); renderCal(); renderMkt(); renderCheck();
   }
 
   // ── 조작 ────────────────────────────────
@@ -582,7 +674,7 @@
     [].forEach.call(nav.querySelectorAll("button"), function(x){
       x.setAttribute("aria-selected", x.getAttribute("data-tab") === k);
     });
-    ["watch","rule","mkt","check"].forEach(function(t){
+    ["watch","cal","rule","mkt","check"].forEach(function(t){
       document.getElementById("tab-" + t).hidden = (t !== k);
     });
     window.scrollTo(0, 0);
@@ -634,7 +726,7 @@
 
 <footer class="wrap">
   조회 전용 스냅샷 · 값의 원본은 아티팩트 원장이다. 투자 판단의 근거가 아니라 내가 세운 규칙의 출력이다.
-  <span class="ver">· 화면 v7</span>
+  <span class="ver">· 화면 v8</span>
 </footer>
 </body>
 </html>
