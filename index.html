@@ -754,6 +754,14 @@
   var LOCK_LS = "stocks-app-lock", PEND_SS = "stocks-app-pend", FAIL_LS = "stocks-app-fail";
   var PBKDF2_ITER = 310000, IDLE_MS = 5 * 60 * 1000;
   var UNLOCKED = null, idleT = null;
+  // 실계좌 보유 — 사용자의 PC 가 한국투자증권 계좌를 조회해 저장소 루트에 올리는 암호문(2026-10-08).
+  // 겉모양은 data.json 의 hold 와 같다. 있으면 이것을, 없거나 모양이 틀리면 data.json 의 hold 를 쓴다.
+  var HJ = null;
+  function loadHoldJson(){
+    return fetch("./hold.json", {cache:"no-cache"}).then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ return (j && j.alg === "AES-GCM" && j.iv && j.ct) ? j : null; })
+      .catch(function(){ return null; });
+  }
   (function takeKey(){
     var m = /[#&]k=([A-Za-z0-9_-]{40,})/.exec(location.hash || "");
     if(!m) return;
@@ -863,12 +871,12 @@
     var id = e.target.id;
     if(["keyForm","pinSet","pinOpen"].indexOf(id) < 0) return;
     e.preventDefault();
-    if(!D || !D.hold) return;
+    if(!D || !(HJ || D.hold)) return;
     if(id === "keyForm"){
       var v = document.getElementById("keyIn").value.replace(/\s+/g, ""), m = /k=([A-Za-z0-9_-]+)/.exec(v);
       if(m) v = m[1];
       if(!/^[A-Za-z0-9_-]{40,}$/.test(v)) return setErr("열쇠 모양이 아니다 — 43자 영문·숫자·-·_ 한 줄을 그대로 붙여라.");
-      openHold(D.hold, v).then(function(){
+      openHold(HJ || D.hold, v).then(function(){
         try { sessionStorage.setItem(PEND_SS, v); } catch(x){}
         renderHold();
       }).catch(function(){ setErr("이 열쇠로는 풀리지 않는다 — 한 글자라도 빠졌거나 다른 문자열이다."); });
@@ -962,11 +970,17 @@
     return '<svg viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '" class="dn">' + h + (center || "") + '</svg>';
   }
   function renderHold(){
-    var H = D.hold;
+    var H = HJ || D.hold;
     if(!H) return lockMsg("보유 데이터가 이 판에 없다.");
     if(!(window.crypto && crypto.subtle)) return lockMsg("이 브라우저는 복호화(WebCrypto)를 지원하지 않는다.");
     if(UNLOCKED){
-      return openHold(H, UNLOCKED).then(function(P){ drawHold(P); }).catch(function(){
+      return openHold(H, UNLOCKED).then(function(P){ drawHold(P, H === HJ ? "pc" : "ledger"); }).catch(function(){
+        // 실계좌 파일만 못 풀면(PC 쪽 열쇠가 다를 때) 원장 사본으로 물러나되 그렇다고 적는다
+        if(H === HJ && D.hold) return openHold(D.hold, UNLOCKED).then(function(P){
+          drawHold(P, "ledger", "실계좌 파일(hold.json)을 이 열쇠로 풀지 못했다(지문 " + esc(HJ.kid) + ") — 원장 사본을 보여 준다.");
+        });
+        throw new Error("x");
+      }).catch(function(){
         lsSet(LOCK_LS, null); UNLOCKED = null;
         lockMsg("저장된 열쇠로 보유를 풀지 못했다(열쇠가 바뀌었을 수 있다 · 지문 " + esc(H.kid) + "). 새 열쇠를 붙여 넣어라.", KEY_FORM);
       });
@@ -984,18 +998,31 @@
     lockMsg("이 기기에는 열쇠가 없다. 원장 저장소의 <b>data/app-key.txt</b> 한 줄을 복사해 아래에 붙여 넣은 뒤 "
       + "이 기기용 비밀번호를 정하면, 그 뒤로는 비밀번호(또는 지문)로 연다.", KEY_FORM);
   }
-  function drawHold(P){
+  function drawHold(P, src, warn){
     document.getElementById("holdNote").hidden = false;
     document.getElementById("holdAsof").textContent = stampOf(P.pulledAt);
-    var M = D.mktidx || {}, fx = {USD: M.USDKRW && M.USDKRW.v, JPY: M.JPYKRW && M.JPYKRW.v / 100, KRW: 1};
+    // 환율 — 실계좌 파일에 fx(1단위당 원)가 있으면 그것, 없으면 시장 지표
+    var M = D.mktidx || {}, PF = P.fx || {};
+    var fx = {USD: PF.USD || (M.USDKRW && M.USDKRW.v), JPY: PF.JPY || (M.JPYKRW && M.JPYKRW.v / 100), KRW: 1};
+    var fxSrc = (PF.USD || PF.JPY) ? "실계좌" : "시장 지표";
     var by = {}; D.stocks.forEach(function(s){ by[s.t] = s; });
-    var rows = [], miss = [], cash = P.cash || null, cashK = 0, cashMiss = [], byCcy = {};
+    var rows = [], miss = [], cash = P.cash || null, cashK = 0, cashMiss = [], byCcy = {}, pcPx = 0;
     Object.keys(P.items).forEach(function(t){
-      var h = P.items[t], s = by[t] || {t:t, n:t, c:"USD"}, r = fx[s.c];
+      // 실계좌 파일의 px·c·n 이 있으면 그것을 쓴다 — 워치리스트에 없는 보유도 빠지지 않는다.
+      // 통화를 어디서도 못 구하면 USD 로 짐작하지 않고 '값 없음'으로 둔다(R9)
+      var h = P.items[t], w = by[t], s;
+      if(h.px != null || h.c || h.n){
+        s = Object.assign({}, w || {t:t}, {t:t, n:h.n || (w && w.n) || t, c:h.c || (w && w.c) || null,
+                                            px:h.px != null ? h.px : (w ? w.px : null)});
+        if(h.px != null) pcPx++;
+      } else s = w || {t:t, n:t, c:null};
+      var r = fx[s.c];
       var cost = h.avg != null ? h.avg * h.shares : null, val = s.px != null ? s.px * h.shares : null;
       var pl = (cost != null && val != null) ? val - cost : null;
-      var x = {s:s, h:h, cost:cost, val:val, pl:pl, ret:(pl != null && cost) ? pl / cost * 100 : null,
-               valK: (val != null && r) ? val * r : null, plK: (pl != null && r) ? pl * r : null};
+      var valK = (val != null && r) ? val * r : null;
+      // 원화 손익 — 원화 매입금액(costK)이 있으면 매입 때 환율까지 반영한 실제 손익
+      var plK = (valK != null && h.costK != null) ? valK - h.costK : ((pl != null && r) ? pl * r : null);
+      var x = {s:s, h:h, cost:cost, val:val, pl:pl, ret:(pl != null && cost) ? pl / cost * 100 : null, valK:valK, plK:plK};
       rows.push(x);
       if(x.valK == null) miss.push(s.t); else byCcy[s.c] = (byCcy[s.c] || 0) + x.valK;
     });
@@ -1028,7 +1055,7 @@
     var leg = parts.map(function(p, i){
       return '<li data-k="m" data-i="' + i + '"><i style="background:' + p.col + '"></i><span>' + esc(p.label) + '</span><b>'
         + (p.w * 100).toFixed(1) + '%</b></li>'; }).join("");
-    if(noCash) leg += '<li class="na"><i style="background:var(--s-cash)"></i><span>현금 — 원장에 없음(분모에서 빠짐)</span><b>—</b></li>';
+    if(noCash) leg += '<li class="na"><i style="background:var(--s-cash)"></i><span>현금 — ' + (src === "pc" ? "파일에" : "원장에") + ' 없음(분모에서 빠짐)</span><b>—</b></li>';
     var cleg = ccyParts.map(function(p, i){
       return '<li data-k="c" data-i="' + i + '"><i style="background:' + p.col + '"></i><span>' + p.label + '</span><b>'
         + (p.w * 100).toFixed(1) + '%</b></li>'; }).join("");
@@ -1037,13 +1064,16 @@
       + '<div class="hv-ccy"><h3>통화별 비중</h3>' + donut(ccyParts, 112, 18, "c", "")
       + '<ul class="hleg">' + cleg + '</ul></div></div>'
       + '<div id="holdPick" class="hpick" aria-live="polite">조각이나 범례를 누르면 내용이 여기 나온다.</div>';
-    var notes = [];
-    if(noCash) notes.push("현금이 원장에 없어 비중의 분모는 주식 평가액 합계다 — 현금을 넣으면 분모가 총자산(현금 포함)이 된다.");
+    var notes = warn ? [warn] : [];
+    if(noCash) notes.push((src === "pc" ? "실계좌 파일에 현금이 없어" : "현금이 원장에 없어") + " 비중의 분모는 주식 평가액 합계다 — 현금을 넣으면 분모가 총자산(현금 포함)이 된다.");
     if(miss.length) notes.push("현재가나 환율이 없어 비중에서 뺀 것: " + esc(miss.join(", ")));
     if(cashMiss.length) notes.push("환율이 없어 현금에서 뺀 통화: " + esc(cashMiss.join(", ")));
     if(notes.length) sh += '<p class="hwarn">' + notes.join("<br>") + '</p>';
-    sh += '<div class="htime">시세 조회 <b>' + esc(stampOf(D.asof)) + '</b> · 보유 원장 사본 <b>' + esc(stampOf(P.pulledAt))
-      + '</b> · 환율 USD ' + (fx.USD ? fx.USD.toLocaleString("ko-KR") : "—") + ' · JPY100 ' + (M.JPYKRW ? M.JPYKRW.v.toLocaleString("ko-KR") : "—") + '</div>';
+    sh += '<div class="htime">' + (src === "pc" ? '보유 <b>실계좌</b> 조회 <b>' : '보유 원장 사본 <b>') + esc(stampOf(P.pulledAt)) + '</b>'
+      + (pcPx ? ' · 시세 ' + (pcPx === rows.length ? '실계좌 조회 시각 기준' : '실계좌 ' + pcPx + '종 + 워치리스트 <b>' + esc(stampOf(D.asof)) + '</b>')
+              : ' · 시세 조회 <b>' + esc(stampOf(D.asof)) + '</b>')
+      + ' · 환율(' + fxSrc + ') USD ' + (fx.USD ? (+fx.USD.toFixed(2)).toLocaleString("ko-KR") : "—")
+      + ' · JPY100 ' + (fx.JPY ? (+(fx.JPY * 100).toFixed(2)).toLocaleString("ko-KR") : "—") + '</div>';
     var rec = lockRec(), canBio = !!(window.PublicKeyCredential && navigator.credentials);
     sh = '<div class="lk-bar"><span>열림 · 화면을 벗어나거나 5분 손대지 않으면 다시 잠긴다</span>'
       + (rec && !rec.bio && canBio ? '<button type="button" id="bioAdd">지문 등록</button>' : (rec && rec.bio ? '<em>지문 켜짐</em>' : ''))
@@ -1160,7 +1190,12 @@
       });
     });
   }
-  load().then(function(j){ D = j; paint(); }).catch(function(){
+  load().then(function(j){
+    D = j; paint();
+    // 실계좌 파일은 따로 받는다 — 없거나 늦어도 워치리스트는 먼저 뜬다
+    // 잠금 화면에서 비밀번호를 치는 중일 수 있으니, 열려 있을 때(또는 원장 사본이 없을 때)만 다시 그린다
+    loadHoldJson().then(function(h){ if(h){ HJ = h; if(UNLOCKED || !D.hold) renderHold(); } });
+  }).catch(function(){
     document.getElementById("list").innerHTML =
       '<p class="empty">데이터를 못 받았다. 연결을 확인하고 다시 열어라.</p>';
   });
@@ -1183,7 +1218,7 @@
 
 <footer class="wrap">
   조회 전용 스냅샷 · 값의 원본은 아티팩트 원장이다. 투자 판단의 근거가 아니라 내가 세운 규칙의 출력이다.
-  <span class="ver">· 화면 v13</span>
+  <span class="ver">· 화면 v14</span>
 </footer>
 </body>
 </html>

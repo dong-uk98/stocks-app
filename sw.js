@@ -8,7 +8,7 @@
  * 잠깐 느린 쪽보다 나쁘다. 네트워크가 죽으면 그때만 캐시를 주고, 페이지가 '오프라인'
  * 이라고 적는다.
  */
-var VER = "v13";  // v13: 내 투자 잠금(비밀번호·지문) · v12: 내 투자 도넛(SVG 직접) · v11: 열쇠 붙여넣기 칸 · v10: 내 투자 탭(암호화 보유) · v9: 배당락 · v8: 실적 달력 탭 · v7: AI 노출(대체 위험·해자 약화·자금 동조) · v6: 화면 network-first — 껍데기가 바뀌면 올린다
+var VER = "v14";  // v14: 실계좌 hold.json 우선(네트워크 먼저) · v13: 내 투자 잠금(비밀번호·지문) · v12: 내 투자 도넛(SVG 직접) · v11: 열쇠 붙여넣기 칸 · v10: 내 투자 탭(암호화 보유) · v9: 배당락 · v8: 실적 달력 탭 · v7: AI 노출(대체 위험·해자 약화·자금 동조) · v6: 화면 network-first — 껍데기가 바뀌면 올린다
 var SHELL = "wl-shell-" + VER;
 var DATA  = "wl-data-" + VER;
 var FILES = ["./", "./index.html", "./rules.html", "./manifest.webmanifest",
@@ -44,6 +44,27 @@ self.addEventListener("fetch", function(e){
   if(req.method !== "GET") return;
   var url = new URL(req.url);
   if(url.origin !== self.location.origin) return;
+
+  // 실계좌 보유(hold.json) — 로컬 PC 가 올리는 암호문. 네트워크 먼저, 끊겼을 때만 받아 둔 것.
+  // 404(파일 없음)는 그대로 넘겨 페이지가 data.json 의 hold 로 물러나게 한다 — 옛 사본으로 때우지 않는다.
+  if(url.pathname.endsWith("/hold.json")){
+    e.respondWith(
+      fetch(new Request(req.url, {cache: "no-cache"})).then(function(res){
+        if(res && res.ok){
+          var copy = res.clone();
+          caches.open(DATA).then(function(c){ c.put("./hold.json", copy); });
+        } else if(res && res.status === 404){
+          caches.open(DATA).then(function(c){ c.delete("./hold.json"); });
+        }
+        return res;
+      }).catch(function(){
+        return caches.match("./hold.json").then(function(r){
+          return r || new Response("", {status:404});
+        });
+      })
+    );
+    return;
+  }
 
   if(url.pathname.endsWith("/data.json")){
     e.respondWith(
