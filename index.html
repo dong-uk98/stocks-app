@@ -97,6 +97,15 @@
   .c-h .id b{font-size:15.5px;font-weight:600;letter-spacing:-.01em}
   .c-h .id em{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:6px}
   .c-h .r{text-align:right;line-height:1.15}
+  .c-h .q{text-align:right;line-height:1.15;padding-left:10px;border-left:1px solid var(--line-soft)}
+  .c-h .q .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:21px;font-weight:600;letter-spacing:-.02em}
+  .c-h .q .v small{font-size:11px;font-weight:400;color:var(--muted)}
+  .c-h .q i{display:block;font-style:normal;font-size:10px;color:var(--muted);letter-spacing:.04em}
+  .q.g-top .v,.q.g-focus .v{color:var(--under)} .q.g-normal .v{color:var(--ink-2)}
+  .q.g-watch .v{color:var(--band)} .q.g-out .v{color:var(--over)}
+  .qt{font-size:11px;font-weight:600}
+  .qt.g-top,.qt.g-focus{color:var(--under)} .qt.g-normal{color:var(--ink-2)} .qt.g-watch{color:var(--band)} .qt.g-out{color:var(--over)}
+  .ver{font-family:var(--mono);font-size:11px;opacity:.7}
   .c-h .r .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:21px;font-weight:600;letter-spacing:-.02em}
   .c-h .r i{display:block;font-style:normal;font-size:10px;color:var(--muted);letter-spacing:.04em}
   .c[data-st="under"] .r .v{color:var(--under)}
@@ -111,10 +120,26 @@
   .c[data-st="under"] .bd{background:color-mix(in srgb,var(--under) 16%,transparent);color:var(--under)}
   .c[data-st="band"]  .bd{background:color-mix(in srgb,var(--band) 16%,transparent);color:var(--band)}
   .c[data-st="over"]  .bd{background:color-mix(in srgb,var(--over) 14%,transparent);color:var(--over)}
+  .sv{font-size:10.5px;padding:1px 6px;border:1px solid currentColor;border-radius:999px;color:var(--muted)}
+  .sv.under{color:var(--under)} .sv.mixed,.sv.fair{color:var(--band)} .sv.over,.sv.risk{color:var(--over)}
+  .ai{font-size:10.5px;padding:1px 6px;border:1px solid currentColor;border-radius:999px;color:var(--muted)}
+  .ai.hi{color:var(--over);font-weight:600} .ai.mid{color:var(--band)} .ai.mo{color:var(--over);border-style:dashed}
+  .ai.fl{color:var(--accent)}
+  .c details .ais{font-size:12px;color:var(--ink-2);margin-top:6px;line-height:1.55}
+  .c details .ais li{margin:3px 0} .c details .ais code{font-size:10.5px;color:var(--accent)}
+  .airb li{margin:4px 0;font-size:12.5px;line-height:1.5} .airb b{font-family:var(--mono)}
+  .cl{font-family:var(--mono);font-size:10.5px;color:var(--ink-2)}
   .tg{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--line);
       border-radius:3px;padding:1px 5px}
   .sp{flex:1}
   .c details{margin-top:8px}
+  .clg{display:flex;justify-content:space-between;margin:10px 0 4px;font-size:12px;border-bottom:1px solid var(--line-soft);padding-bottom:3px}
+  .cli{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:3px 0}
+  .cli small{display:block;font-size:11px;color:var(--muted)}
+  .cli .p{flex:0 0 20px;height:20px;line-height:20px;text-align:center;font:600 11px/20px var(--mono);font-style:normal;border-radius:3px;border:1px solid var(--line)}
+  .cli .p5{background:var(--under);color:var(--card);border-color:var(--under)} .cli .p4{color:var(--under);border-color:currentColor}
+  .cli .p3{color:var(--muted)} .cli .p2{color:var(--band);border-color:currentColor}
+  .cli .p1{background:var(--over);color:var(--card);border-color:var(--over)} .cli .pn{color:var(--muted);border-style:dashed}
   .c details summary{list-style:none;cursor:pointer;font-size:12px;color:var(--accent);
     padding-top:6px;border-top:1px dashed var(--line-soft)}
   .c details summary::-webkit-details-marker{display:none}
@@ -167,6 +192,35 @@
   table.tally td.n{text-align:right;font-family:var(--mono);color:var(--ink-2)}
   .note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:12px}
   .note a{color:var(--accent)}
+  /* 실적 달력 — 폰이라 칸에는 건수만, 종목은 아래 날짜순 목록에 */
+  .calm{background:var(--card);border:1px solid var(--line-soft);box-shadow:var(--shadow);padding:10px 10px 8px;margin-bottom:10px}
+  .calm h3{margin:0 0 6px;font-size:14px;display:flex;justify-content:space-between;align-items:baseline}
+  .calm h3 span{font:400 11px var(--mono);color:var(--muted)}
+  .calg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;text-align:center}
+  .calg .wd{font-size:10.5px;color:var(--muted)}
+  .calg .sun{color:var(--over)}
+  .cald{appearance:none;border:0;background:none;font:inherit;color:inherit;min-height:38px;padding:2px 0;
+    border-top:1px solid var(--line-soft);display:flex;flex-direction:column;align-items:center;gap:2px}
+  .cald .dn{font:500 11px var(--mono);color:var(--ink-2)}
+  .cald.sun .dn{color:var(--over)}
+  .cald.past{opacity:.45}
+  .cald.today{background:var(--accent-soft)}
+  .cald .n{min-width:18px;font:600 10.5px/1.6 var(--mono);border-radius:9px;border:1px dashed var(--accent);color:var(--accent)}
+  .cald .n.cf{border-style:solid;background:var(--accent);color:var(--card)}
+  .cald .n.dv{border:1px solid var(--under);color:var(--under)}
+  .cald .dvd{width:5px;height:5px;border-radius:50%;background:var(--under)}
+  .etg.dv{border-color:var(--under);color:var(--under)}
+  .cald[data-d]{cursor:pointer}
+  .cday{padding:9px 0;border-bottom:1px dashed var(--line-soft);scroll-margin-top:12px}
+  .cday.hl{background:var(--accent-soft)}
+  .cday .w{display:flex;gap:8px;align-items:baseline}
+  .cday .w b{font:600 13.5px var(--mono)}
+  .cday .w span{font:400 11px var(--mono);color:var(--muted)}
+  .cday ul{list-style:none;margin:5px 0 0;padding:0;display:grid;gap:4px}
+  .cday li{display:flex;flex-wrap:wrap;gap:3px 7px;align-items:baseline;font-size:13px}
+  .cday li i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .etg{font:600 10px/1 var(--sans);padding:3px 5px;border:1px solid var(--accent);color:var(--accent);border-radius:2px}
+  .etg.est{border-style:dashed;border-color:var(--muted);color:var(--muted)}
   footer{padding:18px 14px 8px;border-top:1px solid var(--line-soft);margin-top:18px;
     font-size:11.5px;color:var(--muted);line-height:1.6}
 </style>
@@ -179,6 +233,7 @@
     <span>갱신 <b id="asof">—</b></span>
     <span><b id="cnt">—</b>종목</span>
     <span>조회 전용</span>
+    <a href="./rules.html" style="color:var(--accent)">규칙집</a>
   </div>
   <div id="offline">오프라인 — 마지막으로 받아둔 값을 보여준다. 시세는 <span id="offAsof">—</span> 기준이다.</div>
 </header>
@@ -191,7 +246,7 @@
         <input id="q" type="search" placeholder="종목·티커 검색" autocomplete="off" enterkeyhint="search">
         <select id="sort">
           <option value="r">비율순</option>
-          <option value="net">순점순</option>
+          <option value="net">점수순</option>
           <option value="t">티커순</option>
         </select>
       </div>
@@ -200,8 +255,23 @@
     <div id="list"></div>
   </section>
 
+  <section id="tab-cal" hidden class="wrap">
+    <div class="sec"><h2>실적·배당 달력</h2>
+      <p class="note" style="margin-top:0">다음 실적 발표일과 배당락일. 숫자는 그날 일정 수다 — <b>채운 파랑</b>은 회사가 공지한 실적이 있는 날,
+        <b>점선</b>은 소스 추정 실적만 있는 날, <b>초록</b>은 배당락만 있는 날, 숫자 아래 <b>초록 점</b>은 실적과 배당락이 겹친 날이다.
+        배당락은 회사가 선언한 것만 올린다 — 배당락일 전날까지 사야 그 회차 배당을 받는다. 날짜를 누르면 아래 목록의 그날로 간다.</p>
+      <div id="calMonths"></div></div>
+    <div class="sec"><h2>날짜순</h2><div id="calList"></div><div class="note" id="calRest"></div></div>
+  </section>
+
   <section id="tab-rule" hidden class="wrap">
+    <div class="sec"><h2>두 축</h2>
+      <p class="note" style="margin-top:0"><b>비율</b>(현재가 ÷ 저평가 시작가)은 얼마면 싼가, <b>점수</b>는 어떤 회사인가다.
+        점수는 체크리스트 127문항의 평균(5점 만점)이고, 예전의 순점(가점 − 감점)은 그 안에 들어 있다.
+        <b>집중 투자</b>는 점수 3.0 이상(금리 스트레스 국면 3.5), <b>일반 비중</b> 2.8 이상, 2.2 미만은 제외.
+        카드의 <b>체크리스트</b>를 펼치면 문항별 점수를 본다. 문항 구간 전부는 <a href="./rules.html">규칙집</a>에.</p></div>
     <div class="sec"><h2>적용 규칙</h2><div id="ruleList"></div></div>
+    <div class="sec"><h2>AI 노출 기준</h2><div id="aiRule"></div></div>
     <p class="note">종목마다 <b>어떤 값으로 시작가를 냈는지</b>가 다르다. 같은 0.8이어도 R1의 0.8과
       R4의 0.8은 뜻이 다르다 — R4는 적정가가 아니라 하방 바닥이라 <b>비율을 서로 견주면 안 된다</b>.
       규칙을 누르면 그 규칙으로 낸 종목만 워치 탭에 보인다.</p>
@@ -225,6 +295,7 @@
 
 <nav id="tabs">
   <button data-tab="watch" aria-selected="true"><span class="g">◧</span>워치</button>
+  <button data-tab="cal" aria-selected="false"><span class="g">▦</span>일정</button>
   <button data-tab="rule" aria-selected="false"><span class="g">§</span>규칙</button>
   <button data-tab="mkt" aria-selected="false"><span class="g">◈</span>시장</button>
   <button data-tab="check" aria-selected="false"><span class="g">✓</span>검산</button>
@@ -238,8 +309,8 @@
   var LB = {under:"저평가 후보", band:"밴드 하단 부근", over:"고평가 신호",
             floor:"Floor 대비", nodata:"시작가 미수집", norule:"규칙 미적용",
             blocked:"산출 보류", none:"시작가 미수집"};
-  var CHIPS = [{k:"all",l:"전체"},{k:"under",l:"저평가"},{k:"band",l:"밴드"},
-               {k:"over",l:"고평가"},{k:"floor",l:"Floor"},{k:"na",l:"미산출"}];
+  var CHIPS = [{k:"all",l:"전체"},{k:"both",l:"두 축 통과"},{k:"under",l:"저평가"},{k:"q30",l:"점수 3.0↑"},
+               {k:"aihi",l:"AI 대체 높음"},{k:"band",l:"밴드"},{k:"over",l:"고평가"},{k:"floor",l:"Floor"},{k:"na",l:"미산출"}];
   var NA = {nodata:1, norule:1, blocked:1, none:1};
 
   function esc(s){ return String(s == null ? "" : s)
@@ -257,7 +328,21 @@
     if(s.st === "floor") return (s.r < 10 ? s.r.toFixed(2) : Math.round(s.r)) + "배";
     return s.r.toFixed(2);
   }
-  function fmtNet(v){ return v == null ? "—" : (v > 0 ? "+" : "") + v; }
+  // 질 판정 — 문턱은 원장의 _cl5.QUAL(data.json 의 qual). 집중 투자 3.0 · 금리 스트레스 3.5 ·
+  // 일반 비중 2.8 · 제외 2.2 미만. 가격(비율)과 따로 읽는다 — 둘 다 넘어야 '두 축 통과'다.
+  function both(s){
+    return !!(s.cl && s.cl.avg >= (D.qual ? D.qual.focus : 3.0) && s.st === "under" && s.r != null && s.r < 1 && !s.span);
+  }
+  function grade(s){
+    var Q = D.qual || {focus:3.0, focus_stress:3.5, normal:2.8, exclude:2.2};
+    if(!s.cl) return {c:"", l:"—"};
+    var a = s.cl.avg;
+    if(a >= Q.focus_stress) return {c:"g-top", l:"집중 가능", t:"집중 가능 · " + Q.focus_stress.toFixed(1) + "↑(금리 스트레스 문턱도 넘음)"};
+    if(a >= Q.focus) return {c:"g-focus", l:"집중 가능", t:"집중 가능 · " + Q.focus.toFixed(1) + "~" + Q.focus_stress.toFixed(1)};
+    if(a >= Q.normal) return {c:"g-normal", l:"일반 비중"};
+    if(a >= Q.exclude) return {c:"g-watch", l:"관찰"};
+    return {c:"g-out", l:"제외"};
+  }
   function pass(s){
     if(ruleFilt && s.rule !== ruleFilt) return false;
     if(q){
@@ -266,21 +351,41 @@
     }
     if(filt === "all") return true;
     if(filt === "na") return !!NA[s.st];
+    if(filt === "q30") return !!(s.cl && s.cl.avg >= (D.qual ? D.qual.focus : 3.0));
+    // 원장(checklist.py)과 같은 조건 — 비율 1 미만 · 점수 3.0 이상 · 밴드 폭 경고 없음(관문 G5)
+    if(filt === "both") return both(s);
+    if(filt === "aihi") return !!(s.ai && s.ai.a && s.ai.a.g === "높음");
     return s.st === filt;
   }
 
+  var SVL = {under:"저평가", mixed:"혼재", over:"고평가", fair:"적정", risk:"관문 탈락",
+             hold:"보류", nodata:"미수집", blocked:"보류"};
   function card(s){
     var na = !!NA[s.st];
     var h = '<article class="c" data-st="' + esc(s.st) + '">'
       + '<div class="c-h"><div class="id"><b>' + esc(s.n) + '</b><em>' + esc(s.t) + '</em></div>'
       + '<div class="r"><span class="v num">' + fmtR(s) + '</span><i>'
-      + (s.st === "floor" ? "Floor 대비" : "비율") + '</i></div></div>'
+      + (s.st === "floor" ? "Floor 대비" : "비율") + '</i></div>'
+      // 질 점수 = 체크리스트 평균(127문항 · 5점). 가격(비율)과 나란히 놓는 두 번째 큰 숫자다
+      + '<div class="q ' + grade(s).c + '"><span class="v num">' + (s.cl ? s.cl.avg.toFixed(2) : "—")
+      + (s.cl ? '<small>/5</small>' : '') + '</span><i>점수</i></div></div>'
       + '<div class="c-b">'
       + '<div><i>현재</i><span>' + fmtPx(s.px, s.c) + '</span></div>'
       + '<div><i>' + (s.st === "floor" ? "순현금 Floor" : "시작가") + '</i><span>' + fmtPx(s.sp, s.c) + '</span></div>'
-      + '<div><i>순점</i><span>' + fmtNet(s.net) + (s.nrm != null && s.nrm !== s.net
-          ? ' <small style="opacity:.65">(' + fmtNet(s.nrm) + ')</small>' : '') + '</span></div>'
+      // 순점은 2026-09-26 에 체크리스트 N 카테고리로 합쳤다 — 따로 보여주지 않는다
+      + '<div><i>질 판정</i><span class="qt ' + grade(s).c + '">' + grade(s).l + '</span></div>'
       + '</div><div class="c-f"><span class="bd">' + esc(LB[s.st] || s.st) + '</span>';
+    // 자기 평균 대비 판정 — 비율과 따로 본다(규칙집 참고). ETF 는 해당 없음이라 안 붙인다
+    if(s.sv && s.sv.v && s.sv.v !== "na")
+      h += '<span class="sv ' + esc(s.sv.v) + '" title="' + esc((s.sv.why || "") + (s.sv.tags && s.sv.tags.length ? " · " + s.sv.tags.join(" · ") : "")) + '">자기평균 '
+         + esc(SVL[s.sv.v] || s.sv.v) + (s.sv.tags && s.sv.tags.some(function(x){ return x.indexOf("이익") === 0; }) ? " ⚠" : "") + '</span>';
+    // AI 노출 — 판정에 안 쓰는 참고값(원장 AI 노출 구역과 같은 값)
+    var X = s.ai;
+    if(X){
+      if(X.a && X.a.g) h += '<span class="ai ' + (X.a.g === "높음" ? "hi" : X.a.g === "중간" ? "mid" : "") + '">AI대체 ' + esc(X.a.g) + '</span>';
+      if(X.m && X.m.flag) h += '<span class="ai mo">해자 약화</span>';
+      if(X.lb && /동조/.test(X.lb)) h += '<span class="ai fl">' + esc(X.lb) + '</span>';
+    }
     // 규칙은 번호만 적으면 읽는 사람이 매번 규칙표를 찾아야 한다 — 뜻을 같이 적는다
     if(s.rule){
       var rm = RMAP[s.rule];
@@ -291,6 +396,28 @@
     if(s.chg != null) h += '<span class="num ' + (s.chg >= 0 ? "up" : "dn") + '" style="font-size:11.5px">'
       + (s.chg >= 0 ? "+" : "") + s.chg.toFixed(2) + '%</span>';
     h += '</div>';
+    // 종목별 체크리스트 — 펼칠 때 그린다(문항 120여 개를 카드마다 미리 그리면 목록이 무거워진다)
+    if(s.cl) h += '<details class="clx" data-t="' + esc(s.t) + '"><summary>체크리스트 '
+      + s.cl.avg.toFixed(2) + '/5 · ' + s.cl.n + '문항</summary><div class="clb"></div></details>';
+    if(X && (X.a || X.b != null)){
+      h += '<details><summary>AI 노출' + (X.a && X.a.g ? ' · 대체 ' + esc(X.a.g) : '') + '</summary><div class="ais">';
+      if(X.a){
+        if(X.a.g) h += '<div><b>대체 위험 ' + esc(X.a.g) + '</b>' + (X.a.sc != null ? ' · ' + X.a.sc.toFixed(2) + '/3' : '')
+          + (X.a.hi ? ' · 높음 부문 ' + Math.round(X.a.hi * 100) + '%' : '')
+          + (X.a.ad || X.a.ai ? ' · AI 수요 직접 ' + Math.round((X.a.ad || 0) * 100) + '% · 간접 ' + Math.round((X.a.ai || 0) * 100) + '%' + (X.a.etf ? '(상한)' : '') : '')
+          + (X.a.etf && X.a.cov != null && X.a.cov < 1 ? ' · 채점 ' + Math.round(X.a.cov * 100) + '%' : '') + '</div>';
+        else if(X.a.nw) h += '<div>' + esc(X.a.nw) + '</div>';
+        h += '<ul style="padding-left:16px;margin:4px 0">' + (X.a.segs || []).map(function(g){
+          return '<li><b>' + esc(g.n) + '</b> ' + (g.w != null ? (X.a.etf ? (g.w * 100).toFixed(1) : Math.round(g.w * 100)) + '% · ' : '')
+            + esc(g.sub) + (g.code ? ' <code>[' + esc(g.code) + ']</code>' : '') + (g.why ? ' — ' + esc(g.why) : '') + '</li>';
+        }).join("") + '</ul><div style="color:var(--muted)">출처: ' + esc(X.a.src || "") + '</div>';
+      }
+      if(X.m) h += '<div style="margin-top:6px"><b>' + (X.m.flag ? '해자 약화' : '해자 ' + esc((X.m.e || []).join("·"))) + '</b> · 총이익률 ' + X.m.gm + '% — ' + esc(X.m.why || "") + '</div>';
+      if(X.b != null) h += '<div style="margin-top:6px"><b>자금 동조 ' + esc(X.lb || "") + '</b> · AI 베타 ' + (X.b >= 0 ? "+" : "") + X.b.toFixed(2)
+        + ' (t ' + X.tt.toFixed(1) + ', ' + X.n + '주)' + (X.ds != null ? ' · 딥시크 당일 ' + X.ds.toFixed(1) + '% (지수 대비 ' + X.dsx.toFixed(1) + '%p)' : '') + '</div>';
+      else if(X.nw) h += '<div style="margin-top:6px">자금 동조: ' + esc(X.nw) + '</div>';
+      h += '</div></details>';
+    }
     if(s.why || s.warn){
       h += '<details><summary>산출 근거' + (s.warn ? " · 주의" : "") + '</summary>';
       var rm2 = RMAP[s.rule];
@@ -303,9 +430,31 @@
     return h + '</article>';
   }
 
+  function clBody(t){
+    var s = D.stocks.filter(function(x){ return x.t === t; })[0];
+    if(!s || !s.cl || !D.clc) return "";
+    var names = {}; D.clc.items.forEach(function(it){ names[it[0]] = it[1]; });
+    return D.clc.cats.map(function(g){
+      var codes = D.clc.items.map(function(it){ return it[0]; }).filter(function(k){ return k.charAt(0) === g[0]; });
+      var avg = (s.cl.cat || {})[g[0]];
+      return '<div class="clg"><b>' + esc(g[0] + " · " + g[1]) + '</b><span class="num">' + (avg == null ? "—" : avg.toFixed(2)) + '</span></div>'
+        + codes.map(function(k){
+          var sc = s.cl.q[k], p = sc ? sc[0] : null;
+          var badge = p === "na" ? '<i class="p pn">–</i>' : (typeof p === "number" ? '<i class="p p' + p + '">' + p + '</i>' : '<i class="p pn">·</i>');
+          return '<div class="cli">' + badge + '<span>' + esc(names[k]) + (sc && sc[1] ? '<small>' + esc(sc[1]) + '</small>' : (sc ? '' : '<small>미채점</small>')) + '</span></div>';
+        }).join("");
+    }).join("");
+  }
+  document.addEventListener("toggle", function(e){
+    var d = e.target;
+    if(!d.classList || !d.classList.contains("clx") || !d.open) return;
+    var b = d.querySelector(".clb");
+    if(b && !b.innerHTML) b.innerHTML = clBody(d.getAttribute("data-t"));
+  }, true);
+
   function render(){
     var rows = D.stocks.filter(pass);
-    if(sortBy === "net") rows.sort(function(a,b){ return (b.net == null ? -99 : b.net) - (a.net == null ? -99 : a.net); });
+    if(sortBy === "net") rows.sort(function(a,b){ return (b.cl ? b.cl.avg : -99) - (a.cl ? a.cl.avg : -99); });
     else if(sortBy === "t") rows.sort(function(a,b){ return a.t < b.t ? -1 : 1; });
     else rows.sort(function(a,b){
       // Floor 비율은 다른 규칙의 비율과 뜻이 달라 같은 줄에 세우지 않는다 — 뒤로 뺀다.
@@ -319,9 +468,13 @@
   }
 
   function chips(){
-    var n = {all:D.stocks.length, na:0};
+    var n = {all:D.stocks.length, na:0, q30:0, both:0};
+    var Qf = D.qual ? D.qual.focus : 3.0;
     D.stocks.forEach(function(s){
       if(NA[s.st]) n.na++; else n[s.st] = (n[s.st] || 0) + 1;
+      if(s.cl && s.cl.avg >= Qf) n.q30++;
+      if(both(s)) n.both++;
+      if(s.ai && s.ai.a && s.ai.a.g === "높음") n.aihi = (n.aihi || 0) + 1;
     });
     document.getElementById("chips").innerHTML = CHIPS.map(function(c){
       return '<button data-f="' + c.k + '" aria-pressed="' + (c.k === filt) + '">'
@@ -366,6 +519,98 @@
     }).join("") || '<p class="empty">규칙 정보가 없다.</p>';
   }
 
+  function renderAiRule(){
+    var R = D.airub, el = document.getElementById("aiRule");
+    if(!R){ el.innerHTML = '<p class="empty">AI 노출 기준이 아직 없다.</p>'; return; }
+    function li(k, v){ return '<li><b>' + esc(k) + '</b> ' + (Array.isArray(v) ? '<i>' + esc(v[0]) + '에서 출발</i> — ' + esc(v[1]) : esc(v)) + '</li>'; }
+    el.innerHTML = '<p class="note" style="margin-top:0"><b>판정(비율·점수)에 쓰지 않는 참고값이다.</b> 판 ' + esc(R.ver) + '. ' + esc(R.how) + '</p>'
+      + (R.stance ? '<p class="note"><b>' + esc(R.stance) + '</b></p>' : '')
+      + '<ul class="airb">' + Object.keys(R.start).map(function(k){ return li(k, R.start[k]); }).join("") + '</ul>'
+      + '<p class="note"><b>조정</b> — ' + esc(R.adjust.note) + '</p>'
+      + '<ul class="airb">' + ["U1","D","B1","B2","B3","B4","B5"].map(function(k){ return li(k, R.adjust[k]); }).join("") + '</ul>'
+      + '<p class="note"><b>해자 약화</b> — ' + esc(R.moat.what) + ' ' + esc(R.moat.rule) + '</p>'
+      + '<ul class="airb">' + ["E0","E1","E2","E3","E4"].map(function(k){ return li(k, R.moat[k]); }).join("") + '</ul>'
+      + '<p class="note">' + esc(R.score) + ' 자금 동조는 주간 수정주가로 SMH(반도체 ETF)가 미국 시장보다 더 간 몫에 대한 기울기다.</p>';
+  }
+
+  // 실적 달력 — data.json 의 earn(tools/earnings.py). 지난 날짜는 '다음 실적'이 아니라 비워 둔다(R9).
+  function renderCal(){
+    var E = D.earn, box = document.getElementById("calMonths");
+    if(!E){ box.innerHTML = '<p class="empty">실적일이 아직 수집되지 않았다.</p>'; return; }
+    function iso(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+    var today = iso(new Date()), up = [], past = [], none = [], by = {};
+    D.stocks.forEach(function(s){
+      if(E.etf.indexOf(s.t) >= 0) return;
+      var e = E.items[s.t];
+      if(!e || !e.d) none.push(s);
+      else if(e.d < today) past.push({s:s, d:e.d});
+      else { var x = {s:s, d:e.d, est:!!e.est}; up.push(x); (by[e.d] = by[e.d] || []).push(x); }
+    });
+    // 배당락 — 선언된 다음 배당락만 달력에(ETF 포함). 지난 것은 주기로 짐작하지 않는다(R9)
+    var DV = E.div || {}, dpast = [], dnone = [], dstale = [], dfail = [], ndx = 0;
+    D.stocks.forEach(function(s){
+      var X = DV[s.t];
+      if(!X){ dfail.push(s); return; }
+      if(X.none) dnone.push(s);
+      else if(X.stale) dstale.push({s:s, x:X});
+      else if(X.ex >= today){ var o = {s:s, d:X.ex, x:X, dv:true}; up.push(o); (by[X.ex] = by[X.ex] || []).push(o); ndx++; }
+      else dpast.push({s:s, x:X});
+    });
+    up.sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+    var WD = ["일","월","화","수","목","금","토"], FQ = {Quarterly:"분기", "Semi-Annual":"반기", Annual:"연", Monthly:"월"}, h = "";
+    if(up.length){
+      var t0 = new Date(up[0].d + "T00:00:00"), y = t0.getFullYear(), m = t0.getMonth();
+      var L = up[up.length - 1].d, ly = +L.slice(0, 4), lm = +L.slice(5, 7) - 1;
+      while(y < ly || (y === ly && m <= lm)){
+        var f = new Date(y, m, 1).getDay(), nd = new Date(y, m + 1, 0).getDate(), c = "", n = 0;
+        for(var i = 0; i < f; i++) c += '<span></span>';
+        for(var d = 1; d <= nd; d++){
+          var k = y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0"), X = by[k] || [];
+          n += X.length;
+          c += '<button type="button" class="cald' + ((f + d - 1) % 7 === 0 ? " sun" : "") + (k < today ? " past" : "") + (k === today ? " today" : "") + '"'
+            + (X.length ? ' data-d="' + k + '"' : ' disabled') + '><span class="dn">' + d + '</span>'
+            + (X.length ? (function(){
+                var er = X.filter(function(x){ return !x.dv; }), dv = X.length - er.length;
+                var cls = !er.length ? " dv" : (er.some(function(x){ return !x.est; }) ? " cf" : "");
+                return '<span class="n' + cls + '">' + X.length + '</span>' + (er.length && dv ? '<span class="dvd"></span>' : '');
+              })() : '') + '</button>';
+        }
+        h += '<div class="calm"><h3>' + y + '년 ' + (m + 1) + '월<span>' + n + '건</span></h3><div class="calg">'
+          + WD.map(function(w, j){ return '<span class="wd' + (j === 0 ? " sun" : "") + '">' + w + '</span>'; }).join("") + c + '</div></div>';
+        m++; if(m > 11){ m = 0; y++; }
+      }
+    }
+    box.innerHTML = h || '<p class="empty">예정된 실적 발표가 없다.</p>';
+    var T = new Date(today + "T00:00:00");
+    document.getElementById("calList").innerHTML = Object.keys(by).sort().map(function(k){
+      var dt = new Date(k + "T00:00:00"), dd = Math.round((dt - T) / 864e5);
+      return '<div class="cday" id="cd-' + k + '"><div class="w"><b>' + (dt.getMonth() + 1) + '월 ' + dt.getDate() + '일 (' + WD[dt.getDay()] + ')</b><span>'
+        + (dd === 0 ? "오늘" : "D-" + dd) + '</span></div><ul>' + by[k].map(function(x){
+          if(x.dv) return '<li><b>' + esc(x.s.n) + '</b><i>' + esc(x.s.t) + '</i><span class="etg dv">배당락</span><i>' + esc(x.x.amt || "")
+            + (x.x.pay ? ' · 지급 ' + x.x.pay.slice(5).replace("-", "/") : "") + (x.x.freq ? ' · ' + esc(FQ[x.x.freq] || x.x.freq) : "") + '</i></li>';
+          return '<li><b>' + esc(x.s.n) + '</b><i>' + esc(x.s.t) + '</i><span class="etg' + (x.est ? " est" : "") + '">' + (x.est ? "추정" : "확정") + '</span>'
+            + '<span class="bd" style="font-size:11px">' + esc(LB[x.s.st] || x.s.st) + '</span></li>';
+        }).join("") + '</ul></div>';
+    }).join("");
+    var r = "";
+    if(past.length) r += '<b>다음 날짜 미공지 ' + past.length + '종</b> — 지난 실적만 있다: ' + past.map(function(x){ return esc(x.s.n) + '(' + x.d.slice(5).replace("-", "/") + ')'; }).join(" · ") + '<br>';
+    if(none.length) r += '<b>날짜 없음</b> — ' + none.map(function(s){ return esc(s.n); }).join(" · ") + '<br>';
+    if(E.etf.length) r += 'ETF·신탁 ' + E.etf.length + '종은 실적 발표가 없다.<br>';
+    if(dpast.length) r += '<b>배당락 · 다음 날짜 미공지 ' + dpast.length + '종</b> — 지난 배당락: ' + dpast.sort(function(a, b){ return a.x.ex < b.x.ex ? 1 : -1; }).map(function(o){
+        return esc(o.s.n) + '(' + o.x.ex.slice(5).replace("-", "/") + (o.x.freq ? ' ' + (FQ[o.x.freq] || o.x.freq) : '') + ')'; }).join(" · ") + '<br>';
+    if(dstale.length) r += '<b>배당 이력 확인 필요</b> — ' + dstale.map(function(o){ return esc(o.s.n) + ': ' + esc(o.x.why || ""); }).join(" · ") + '<br>';
+    if(dnone.length) r += '<b>무배당 ' + dnone.length + '종</b> — ' + dnone.map(function(s){ return esc(s.n); }).join(" · ") + '<br>';
+    if(dfail.length) r += '<b>배당 미수집</b> — ' + dfail.map(function(s){ return esc(s.n) + (E.dfail && E.dfail[s.t] ? '(' + esc(E.dfail[s.t]) + ')' : ''); }).join(" · ") + '<br>';
+    r += '수집 ' + esc(E.asof.slice(0, 16).replace("T", " ")) + ' UTC · stockanalysis.com';
+    document.getElementById("calRest").innerHTML = r;
+  }
+  document.getElementById("calMonths").addEventListener("click", function(e){
+    var b = e.target.closest(".cald[data-d]"); if(!b) return;
+    var el = document.getElementById("cd-" + b.getAttribute("data-d")); if(!el) return;
+    [].forEach.call(document.querySelectorAll(".cday.hl"), function(x){ x.classList.remove("hl"); });
+    el.classList.add("hl"); el.scrollIntoView({behavior:"smooth", block:"start"});
+  });
+
   function nameOf(t){
     for(var i = 0; i < D.stocks.length; i++) if(D.stocks[i].t === t) return D.stocks[i].n;
     return t;
@@ -393,6 +638,10 @@
       if(!n[k]) return;
       h += '<tr><td>' + esc(LB[k] || k) + '</td><td class="n">' + n[k] + '</td></tr>';
     });
+    // 질 점수(체크리스트 평균) 분포 — 순점을 합친 뒤의 질 축
+    var gq = {}, Qo = ["g-top","g-focus","g-normal","g-watch","g-out"];
+    D.stocks.forEach(function(s){ var g = grade(s); if(g.c){ gq[g.c] = gq[g.c] || {l:g.t || g.l, n:0}; gq[g.c].n++; } });
+    Qo.forEach(function(k){ if(gq[k]) h += '<tr><td>점수 · ' + esc(gq[k].l) + '</td><td class="n">' + gq[k].n + '</td></tr>'; });
     h += '<tr><td>대리 산출(파생)</td><td class="n">' + (D.derived == null ? "—" : D.derived) + '</td></tr>';
     h += '<tr><td>미국 10년물</td><td class="n">' + (D.ust10y == null ? "—" : D.ust10y + "%") + '</td></tr>';
     document.getElementById("tally").innerHTML = h;
@@ -414,7 +663,7 @@
     document.getElementById("cnt").textContent = D.count == null ? D.stocks.length : D.count;
     RMAP = {};
     (D.rules || []).forEach(function(r){ RMAP[r.id] = r; });
-    chips(); render(); renderRules(); renderMkt(); renderCheck();
+    chips(); render(); renderRules(); renderAiRule(); renderCal(); renderMkt(); renderCheck();
   }
 
   // ── 조작 ────────────────────────────────
@@ -450,7 +699,7 @@
     [].forEach.call(nav.querySelectorAll("button"), function(x){
       x.setAttribute("aria-selected", x.getAttribute("data-tab") === k);
     });
-    ["watch","rule","mkt","check"].forEach(function(t){
+    ["watch","cal","rule","mkt","check"].forEach(function(t){
       document.getElementById("tab-" + t).hidden = (t !== k);
     });
     window.scrollTo(0, 0);
@@ -484,9 +733,17 @@
       '<p class="empty">데이터를 못 받았다. 연결을 확인하고 다시 열어라.</p>';
   });
 
+  // 새 판이 올라오면 바로 바뀌게 한다. 예전엔 워커가 저장해 둔 옛 화면을 먼저 내줘서, 앱을 올려도
+  // 폰에서는 한두 번 더 열어야 새 화면이 보였다(2026-09-26 '아직 순점으로 나온다'가 그것이다).
+  // 새 워커가 페이지를 넘겨받는 순간(controllerchange) 한 번만 새로고침한다.
   if("serviceWorker" in navigator){
+    var hadCtl = !!navigator.serviceWorker.controller, reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function(){
+      if(!hadCtl || reloaded) return;
+      reloaded = true; location.reload();
+    });
     window.addEventListener("load", function(){
-      navigator.serviceWorker.register("./sw.js").catch(function(){});
+      navigator.serviceWorker.register("./sw.js").then(function(r){ if(r && r.update) r.update(); }).catch(function(){});
     });
   }
 })();
@@ -494,6 +751,7 @@
 
 <footer class="wrap">
   조회 전용 스냅샷 · 값의 원본은 아티팩트 원장이다. 투자 판단의 근거가 아니라 내가 세운 규칙의 출력이다.
+  <span class="ver">· 화면 v9</span>
 </footer>
 </body>
 </html>
