@@ -8,7 +8,7 @@
  * 잠깐 느린 쪽보다 나쁘다. 네트워크가 죽으면 그때만 캐시를 주고, 페이지가 '오프라인'
  * 이라고 적는다.
  */
-var VER = "v11";  // v11: 열쇠 붙여넣기 칸 · v10: 내 투자 탭(암호화 보유) · v9: 배당락 · v8: 실적 달력 탭 · v7: AI 노출(대체 위험·해자 약화·자금 동조) · v6: 화면 network-first — 껍데기가 바뀌면 올린다
+var VER = "v12";  // v12: 내 투자 도넛(SVG 직접) · v11: 열쇠 붙여넣기 칸 · v10: 내 투자 탭(암호화 보유) · v9: 배당락 · v8: 실적 달력 탭 · v7: AI 노출(대체 위험·해자 약화·자금 동조) · v6: 화면 network-first — 껍데기가 바뀌면 올린다
 var SHELL = "wl-shell-" + VER;
 var DATA  = "wl-data-" + VER;
 var FILES = ["./", "./index.html", "./rules.html", "./manifest.webmanifest",

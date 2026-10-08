@@ -101,6 +101,42 @@
   .lock button{padding:8px 12px;font-size:13px;border:1px solid var(--band);background:var(--band);
     color:#fff;border-radius:4px}
   .lock .err{color:var(--over);margin-top:6px}
+  /* 내 투자 도넛 — 범주 팔레트(dataviz 기준 팔레트 1~7), 기타·현금은 회색 두 단 */
+  :root{--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#4a3aa7;
+    --s-etc:#7d8794;--s-cash:#c4cbd3;--c-usd:#3566b8;--c-jpy:#9C6716;--c-krw:#00876a}
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;
+    --s-etc:#8b95a3;--s-cash:#46505d;--c-usd:#5b8fe0;--c-jpy:#b97c22;--c-krw:#2aa585} }
+  :root[data-theme="dark"]{--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;
+    --s-etc:#8b95a3;--s-cash:#46505d;--c-usd:#5b8fe0;--c-jpy:#b97c22;--c-krw:#2aa585}
+  .hviz{display:grid;gap:12px;background:var(--card);border:1px solid var(--line-soft);padding:12px;margin-top:10px}
+  .hv-main{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center}
+  .hv-ccy{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;border-top:1px solid var(--line-soft);padding-top:10px}
+  .hv-ccy h3{width:100%;margin:0;font-size:12px;font-weight:600;color:var(--ink-2)}
+  @media (min-width:640px){ .hviz{grid-template-columns:1fr auto} .hv-ccy{border-top:0;border-left:1px solid var(--line-soft);
+    padding:0 0 0 14px;flex-direction:column;align-items:flex-start} }
+  .dn{display:block;flex:none;max-width:100%;height:auto}
+  .dn .sl{stroke:var(--card);stroke-width:2;cursor:pointer;outline:none;transition:opacity .15s}
+  .dn .sl:focus-visible{stroke:var(--ink)}
+  .dn .sl.dim,.hleg li.dim{opacity:.35}
+  .dn-k{font-size:11px;fill:var(--muted);text-anchor:middle}
+  .dn-v{font:600 17px var(--mono);fill:var(--ink);text-anchor:middle}
+  .hleg{list-style:none;margin:0;padding:0;display:grid;gap:2px;font-size:12.5px;min-width:180px;flex:1}
+  .hleg li{display:grid;grid-template-columns:10px 1fr auto;gap:8px;align-items:center;padding:5px 4px;cursor:pointer;border-radius:3px}
+  .hleg li:hover{background:var(--accent-soft)} .hleg li.na{cursor:default;color:var(--muted)} .hleg li.na:hover{background:none}
+  .hleg i{width:10px;height:10px;border-radius:2px} .hleg b{font-family:var(--mono);font-weight:500;color:var(--ink-2)}
+  .hpick{background:var(--card);border:1px solid var(--line-soft);border-top:0;padding:10px 12px;font-size:13px;color:var(--ink-2);min-height:20px}
+  .hpick em{font-style:normal;color:var(--muted);font-size:11.5px}
+  .hpick .kv{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px} .hpick .kv b{font-family:var(--mono);color:var(--ink)}
+  .hpick .kv b.pl-up{color:var(--under)} .hpick .kv b.pl-dn{color:var(--over)}
+  .hpick .etc{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:3px}
+  .hpick .etc li{display:grid;grid-template-columns:1fr 56px 70px;gap:6px;font-size:12.5px}
+  .hpick .etc b{font-family:var(--mono);font-weight:500;text-align:right}
+  .hwarn{margin:8px 0 0;font-size:12px;color:var(--band);line-height:1.5}
+  .htime{margin-top:8px;font-size:12px;color:var(--muted)} .htime b{color:var(--ink-2);font-weight:600;font-family:var(--mono)}
+  .hv-ccy .hleg{flex:none;min-width:150px}
+  .c-b span.pl-up,.c-h .hr.pl-up{color:var(--under)} .c-b span.pl-dn,.c-h .hr.pl-dn{color:var(--over)}
+  .c-h .id b .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:1px}
 
   /* ── 카드 ─────────────────────────────── */
   #list{padding:12px 14px 20px;display:grid;gap:10px}
@@ -749,63 +785,156 @@
   }
   function pct(v){ return v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2) + "%"; }
   function plc(v){ return v == null ? "" : v >= 0 ? "pl-up" : "pl-dn"; }
+  // 도넛은 외부 차트 라이브러리 없이 SVG 로 직접 그린다 — 이 페이지는 열쇠를 브라우저에 두므로
+  // 외부 스크립트를 들이지 않는 것이 보안 조건이다(2026-10-08 사용자).
+  // 조각 색: 상위 7종목은 범주 팔레트 1~7 순서 고정, 기타는 진한 회색, 현금은 옅은 회색.
+  var SLICE = ["var(--s1)","var(--s2)","var(--s3)","var(--s4)","var(--s5)","var(--s6)","var(--s7)"];
+  var CCY = {USD:"var(--c-usd)", JPY:"var(--c-jpy)", KRW:"var(--c-krw)"};
+  var HV = null;   // 마지막으로 그린 보유 모델 — 조각을 눌렀을 때 쓴다
+  function stampOf(iso){
+    var d = new Date(iso);
+    if(isNaN(d)) return String(iso || "—");
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")
+      + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+  function arc(cx, cy, r0, r1, a0, a1){
+    // 한 바퀴 전체면 두 반원으로 그린다(SVG 호는 시작=끝이면 안 그려진다)
+    if(a1 - a0 >= Math.PI * 2 - 1e-6) return arc(cx, cy, r0, r1, a0, a0 + Math.PI) + arc(cx, cy, r0, r1, a0 + Math.PI, a1);
+    var L = a1 - a0 > Math.PI ? 1 : 0, P = function(r, a){ return (cx + r * Math.sin(a)).toFixed(2) + " " + (cy - r * Math.cos(a)).toFixed(2); };
+    return "M" + P(r1, a0) + "A" + r1 + " " + r1 + " 0 " + L + " 1 " + P(r1, a1)
+      + "L" + P(r0, a1) + "A" + r0 + " " + r0 + " 0 " + L + " 0 " + P(r0, a0) + "Z";
+  }
+  function donut(parts, size, thick, kind, center){
+    var c = size / 2, r1 = c - 2, r0 = r1 - thick, tot = 0, a = 0, h = "";
+    parts.forEach(function(p){ tot += p.w; });
+    parts.forEach(function(p, i){
+      var a1 = a + (tot ? p.w / tot : 0) * Math.PI * 2;
+      if(a1 > a) h += '<path class="sl" d="' + arc(c, c, r0, r1, a, a1) + '" style="fill:' + p.col + '" data-k="' + kind
+        + '" data-i="' + i + '" tabindex="0" role="button" aria-label="' + esc(p.label + " " + (p.w * 100).toFixed(1) + "%") + '"></path>';
+      a = a1;
+    });
+    return '<svg viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '" class="dn">' + h + (center || "") + '</svg>';
+  }
   function renderHold(){
     var H = D.hold, k = myKey();
     if(!H) return lockMsg("보유 데이터가 이 판에 없다.");
     if(!k) return lockMsg("이 기기에는 열쇠가 없다. 원장 저장소의 <b>data/app-key.txt</b> 한 줄을 복사해 아래에 붙여 넣으면 "
       + "이 기기에 저장되고 그 뒤로는 그냥 열어도 보인다.", true);
     if(!(window.crypto && crypto.subtle)) return lockMsg("이 브라우저는 복호화(WebCrypto)를 지원하지 않는다.");
-    openHold(H, k).then(function(P){
-      document.getElementById("holdNote").hidden = false;
-      document.getElementById("holdAsof").textContent = String(P.pulledAt || "—").slice(0, 16).replace("T", " ") + " UTC";
-      var M = D.mktidx || {}, fx = {USD: M.USDKRW && M.USDKRW.v, JPY: M.JPYKRW && M.JPYKRW.v / 100, KRW: 1};
-      var by = {}; D.stocks.forEach(function(s){ by[s.t] = s; });
-      var rows = [], cur = {}, tot = {cost:0, val:0, ok:true};
-      Object.keys(P.items).forEach(function(t){
-        var h = P.items[t], s = by[t] || {t:t, n:t, c:"USD"};
-        var cost = h.avg != null ? h.avg * h.shares : null;
-        var val = s.px != null ? s.px * h.shares : null;
-        var pl = (cost != null && val != null) ? val - cost : null;
-        rows.push({s:s, h:h, cost:cost, val:val, pl:pl, ret:(pl != null && cost) ? pl / cost * 100 : null});
-        var g = cur[s.c] || (cur[s.c] = {cost:0, val:0, n:0, miss:0});
-        g.n++;
-        if(cost == null || val == null){ g.miss++; return; }
-        g.cost += cost; g.val += val;
-        var r = fx[s.c];
-        if(r){ tot.cost += cost * r; tot.val += val * r; } else tot.ok = false;
-      });
-      rows.sort(function(a, b){ return (b.val == null ? -1 : b.val * (fx[b.s.c] || 0)) - (a.val == null ? -1 : a.val * (fx[a.s.c] || 0)); });
-      var sh = '<div class="hsum">';
-      if(tot.cost){
-        var tp = tot.val - tot.cost;
-        sh += '<div><i>원화 환산 합계' + (tot.ok ? "" : " (환율 없는 통화 제외)") + '</i><b>' + fmtAmt(tot.val, "KRW") + '</b>'
-          + '<small class="' + plc(tp) + '">' + fmtAmt(tp, "KRW", 1) + ' · ' + pct(tp / tot.cost * 100) + '</small></div>';
-      }
-      Object.keys(cur).forEach(function(c){
-        var g = cur[c], p = g.val - g.cost;
-        sh += '<div><i>' + esc(c) + ' ' + g.n + '종목' + (g.miss ? " · 값 없음 " + g.miss : "") + '</i><b>' + fmtAmt(g.val, c) + '</b>'
-          + '<small class="' + plc(p) + '">' + fmtAmt(p, c, 1) + ' · ' + pct(g.cost ? p / g.cost * 100 : null) + '</small></div>';
-      });
-      document.getElementById("holdSum").innerHTML = sh + '</div>';
-      document.getElementById("holdList").innerHTML = rows.map(function(x){
-        var s = x.s, h = x.h;
-        return '<div class="c" data-st="' + esc(s.st || "") + '">'
-          + '<div class="c-h"><div class="id"><b>' + esc(s.n) + '</b><em>' + esc(s.t) + '</em></div>'
-          + '<div class="r"><span class="hr ' + plc(x.ret) + '">' + pct(x.ret) + '</span>'
-          + '<i>수익률</i></div></div>'
-          + '<div class="c-b">'
-          + '<div><i>수량</i><span>' + h.shares.toLocaleString("ko-KR") + '주</span></div>'
-          + '<div><i>평단 → 현재가</i><span>' + fmtPx(h.avg, s.c) + ' → ' + fmtPx(s.px, s.c) + '</span></div>'
-          + '<div><i>평가액</i><span>' + fmtAmt(x.val, s.c) + '</span></div>'
-          + '<div><i>손익</i><span class="' + plc(x.pl) + '">' + fmtAmt(x.pl, s.c, 1) + '</span></div>'
-          + '<div><i>판정 · 비율</i><span>' + esc(LB[s.st] || "—") + (s.r != null ? " · " + fmtR(s) : "") + '</span></div>'
-          + '</div></div>';
-      }).join("");
-    }).catch(function(){
+    openHold(H, k).then(function(P){ drawHold(P); }).catch(function(){
       lockMsg("이 기기의 열쇠로 보유를 풀지 못했다(열쇠가 바뀌었을 수 있다 · 지문 " + esc(H.kid) + "). "
         + "새 열쇠를 아래에 붙여 넣어라.", true);
     });
   }
+  function drawHold(P){
+    document.getElementById("holdNote").hidden = false;
+    document.getElementById("holdAsof").textContent = stampOf(P.pulledAt);
+    var M = D.mktidx || {}, fx = {USD: M.USDKRW && M.USDKRW.v, JPY: M.JPYKRW && M.JPYKRW.v / 100, KRW: 1};
+    var by = {}; D.stocks.forEach(function(s){ by[s.t] = s; });
+    var rows = [], miss = [], cash = P.cash || null, cashK = 0, cashMiss = [], byCcy = {};
+    Object.keys(P.items).forEach(function(t){
+      var h = P.items[t], s = by[t] || {t:t, n:t, c:"USD"}, r = fx[s.c];
+      var cost = h.avg != null ? h.avg * h.shares : null, val = s.px != null ? s.px * h.shares : null;
+      var pl = (cost != null && val != null) ? val - cost : null;
+      var x = {s:s, h:h, cost:cost, val:val, pl:pl, ret:(pl != null && cost) ? pl / cost * 100 : null,
+               valK: (val != null && r) ? val * r : null, plK: (pl != null && r) ? pl * r : null};
+      rows.push(x);
+      if(x.valK == null) miss.push(s.t); else byCcy[s.c] = (byCcy[s.c] || 0) + x.valK;
+    });
+    // 현금 — 원장에 들어 있을 때만 쓴다. 없으면 0 으로 치지 않고 '미입력'으로 적는다(R9)
+    if(cash) Object.keys(cash).forEach(function(c){
+      var r = fx[c];
+      if(cash[c] == null) return;
+      if(!r){ cashMiss.push(c); return; }
+      cashK += cash[c] * r; byCcy[c] = (byCcy[c] || 0) + cash[c] * r;
+    });
+    var stockK = 0; rows.forEach(function(x){ if(x.valK != null) stockK += x.valK; });
+    var total = stockK + cashK;
+    rows.forEach(function(x){ x.w = (x.valK != null && total) ? x.valK / total : null; });
+    rows.sort(function(a, b){ return (b.w == null ? -1 : b.w) - (a.w == null ? -1 : a.w); });
+    var ranked = rows.filter(function(x){ return x.w != null; }), top = ranked.slice(0, 7), rest = ranked.slice(7);
+    var parts = top.map(function(x, i){ x.col = SLICE[i];
+      return {label:x.s.n, w:x.w, col:SLICE[i], row:x}; });
+    if(rest.length){
+      var rw = 0, rv = 0, rp = 0; rest.forEach(function(x){ rw += x.w; rv += x.valK; rp += x.plK || 0; x.col = "var(--s-etc)"; });
+      parts.push({label:"기타 (" + rest.length + "종목)", w:rw, col:"var(--s-etc)", etc:rest, valK:rv, plK:rp});
+    }
+    if(cashK > 0) parts.push({label:"현금", w:cashK / total, col:"var(--s-cash)", cash:true, valK:cashK});
+    var ccyParts = ["USD","JPY","KRW"].filter(function(c){ return byCcy[c]; }).map(function(c){
+      return {label:c, w:byCcy[c] / total, col:CCY[c], ccy:c, valK:byCcy[c]}; });
+    HV = {main:parts, ccy:ccyParts, total:total, cashK:cashK};
+
+    var noCash = !cash, ctr = '<text x="110" y="100" class="dn-k">' + (noCash ? "주식 평가액" : "총자산") + '</text>'
+      + '<text x="110" y="124" class="dn-v">' + esc(fmtAmt(total, "KRW")) + '</text>'
+      + '<text x="110" y="144" class="dn-k">원화 환산</text>';
+    var leg = parts.map(function(p, i){
+      return '<li data-k="m" data-i="' + i + '"><i style="background:' + p.col + '"></i><span>' + esc(p.label) + '</span><b>'
+        + (p.w * 100).toFixed(1) + '%</b></li>'; }).join("");
+    if(noCash) leg += '<li class="na"><i style="background:var(--s-cash)"></i><span>현금 — 원장에 없음(분모에서 빠짐)</span><b>—</b></li>';
+    var cleg = ccyParts.map(function(p, i){
+      return '<li data-k="c" data-i="' + i + '"><i style="background:' + p.col + '"></i><span>' + p.label + '</span><b>'
+        + (p.w * 100).toFixed(1) + '%</b></li>'; }).join("");
+    var sh = '<div class="hviz"><div class="hv-main">' + donut(parts, 220, 34, "m", ctr)
+      + '<ul class="hleg">' + leg + '</ul></div>'
+      + '<div class="hv-ccy"><h3>통화별 비중</h3>' + donut(ccyParts, 112, 18, "c", "")
+      + '<ul class="hleg">' + cleg + '</ul></div></div>'
+      + '<div id="holdPick" class="hpick" aria-live="polite">조각이나 범례를 누르면 내용이 여기 나온다.</div>';
+    var notes = [];
+    if(noCash) notes.push("현금이 원장에 없어 비중의 분모는 주식 평가액 합계다 — 현금을 넣으면 분모가 총자산(현금 포함)이 된다.");
+    if(miss.length) notes.push("현재가나 환율이 없어 비중에서 뺀 것: " + esc(miss.join(", ")));
+    if(cashMiss.length) notes.push("환율이 없어 현금에서 뺀 통화: " + esc(cashMiss.join(", ")));
+    if(notes.length) sh += '<p class="hwarn">' + notes.join("<br>") + '</p>';
+    sh += '<div class="htime">시세 조회 <b>' + esc(stampOf(D.asof)) + '</b> · 보유 원장 사본 <b>' + esc(stampOf(P.pulledAt))
+      + '</b> · 환율 USD ' + (fx.USD ? fx.USD.toLocaleString("ko-KR") : "—") + ' · JPY100 ' + (M.JPYKRW ? M.JPYKRW.v.toLocaleString("ko-KR") : "—") + '</div>';
+    document.getElementById("holdSum").innerHTML = sh;
+
+    document.getElementById("holdList").innerHTML = rows.map(function(x){
+      var s = x.s, h = x.h;
+      return '<div class="c" data-st="' + esc(s.st || "") + '">'
+        + '<div class="c-h"><div class="id"><b><i class="sw" style="background:' + (x.col || "transparent") + '"></i>' + esc(s.n) + '</b><em>' + esc(s.t) + '</em></div>'
+        + '<div class="r"><span class="hr ' + plc(x.ret) + '">' + pct(x.ret) + '</span>'
+        + '<i>비중 ' + (x.w == null ? "—" : (x.w * 100).toFixed(1) + "%") + '</i></div></div>'
+        + '<div class="c-b">'
+        + '<div><i>수량</i><span>' + h.shares.toLocaleString("ko-KR") + '주</span></div>'
+        + '<div><i>평단 → 현재가</i><span>' + fmtPx(h.avg, s.c) + ' → ' + fmtPx(s.px, s.c) + '</span></div>'
+        + '<div><i>평가액</i><span>' + fmtAmt(x.val, s.c) + '</span></div>'
+        + '<div><i>손익</i><span class="' + plc(x.pl) + '">' + fmtAmt(x.pl, s.c, 1) + '</span></div>'
+        + '<div><i>판정 · 비율</i><span>' + esc(LB[s.st] || "—") + (s.r != null ? " · " + fmtR(s) : "") + '</span></div>'
+        + '</div></div>';
+    }).join("");
+  }
+  function pickHold(kind, i){
+    if(!HV) return;
+    var p = (kind === "c" ? HV.ccy : HV.main)[i]; if(!p) return;
+    [].forEach.call(document.querySelectorAll('#holdSum [data-k="' + kind + '"]'), function(el){
+      el.classList.toggle("dim", +el.getAttribute("data-i") !== i); });
+    [].forEach.call(document.querySelectorAll('#holdSum [data-k="' + (kind === "c" ? "m" : "c") + '"]'), function(el){
+      el.classList.remove("dim"); });
+    var w = (p.w * 100).toFixed(1) + "%", h;
+    if(p.row){
+      var x = p.row;
+      h = '<b>' + esc(x.s.n) + '</b> <em>' + esc(x.s.t) + '</em><div class="kv"><span>비중 <b>' + w + '</b></span>'
+        + '<span>평가액 <b>' + fmtAmt(x.val, x.s.c) + '</b>' + (x.s.c !== "KRW" ? ' (' + fmtAmt(x.valK, "KRW") + ')' : "") + '</span>'
+        + '<span>손익 <b class="' + plc(x.pl) + '">' + fmtAmt(x.pl, x.s.c, 1) + ' · ' + pct(x.ret) + '</b></span></div>';
+    } else if(p.etc){
+      h = '<b>' + esc(p.label) + '</b><div class="kv"><span>비중 <b>' + w + '</b></span><span>평가액 <b>' + fmtAmt(p.valK, "KRW") + '</b></span>'
+        + '<span>손익 <b class="' + plc(p.plK) + '">' + fmtAmt(p.plK, "KRW", 1) + '</b></span></div><ul class="etc">'
+        + p.etc.map(function(x){ return '<li><span>' + esc(x.s.n) + ' <em>' + esc(x.s.t) + '</em></span><b>' + (x.w * 100).toFixed(1)
+          + '%</b><b class="' + plc(x.pl) + '">' + pct(x.ret) + '</b></li>'; }).join("") + '</ul>';
+    } else if(p.cash){
+      h = '<b>현금</b><div class="kv"><span>비중 <b>' + w + '</b></span><span>금액 <b>' + fmtAmt(p.valK, "KRW") + '</b></span></div>';
+    } else {
+      h = '<b>' + p.label + '</b> 표시 자산<div class="kv"><span>비중 <b>' + w + '</b></span><span>원화 환산 <b>' + fmtAmt(p.valK, "KRW") + '</b></span></div>';
+    }
+    document.getElementById("holdPick").innerHTML = h;
+  }
+  document.getElementById("tab-hold").addEventListener("click", function(e){
+    var el = e.target.closest("[data-k][data-i]"); if(el) pickHold(el.getAttribute("data-k"), +el.getAttribute("data-i"));
+  });
+  document.getElementById("tab-hold").addEventListener("keydown", function(e){
+    if(e.key !== "Enter" && e.key !== " ") return;
+    var el = e.target.closest("[data-k][data-i]"); if(el){ e.preventDefault(); pickHold(el.getAttribute("data-k"), +el.getAttribute("data-i")); }
+  });
 
   // ── 조작 ────────────────────────────────
   document.getElementById("chips").addEventListener("click", function(e){
@@ -892,7 +1021,7 @@
 
 <footer class="wrap">
   조회 전용 스냅샷 · 값의 원본은 아티팩트 원장이다. 투자 판단의 근거가 아니라 내가 세운 규칙의 출력이다.
-  <span class="ver">· 화면 v11</span>
+  <span class="ver">· 화면 v12</span>
 </footer>
 </body>
 </html>
