@@ -95,6 +95,12 @@
   #holdList{display:grid;gap:10px;margin-top:10px}
   .lock{background:var(--card);border:1px solid var(--line-soft);border-left:3px solid var(--band);
     padding:12px;font-size:13px;line-height:1.6;color:var(--ink-2)}
+  .lock form{display:flex;gap:6px;margin-top:10px}
+  .lock input{flex:1;min-width:0;font:13px var(--mono);padding:8px;border:1px solid var(--line-soft);
+    background:var(--bg);color:var(--ink);border-radius:4px}
+  .lock button{padding:8px 12px;font-size:13px;border:1px solid var(--band);background:var(--band);
+    color:#fff;border-radius:4px}
+  .lock .err{color:var(--over);margin-top:6px}
 
   /* ── 카드 ─────────────────────────────── */
   #list{padding:12px 14px 20px;display:grid;gap:10px}
@@ -271,7 +277,7 @@
     <div class="sec"><h2>내 투자</h2>
       <div id="holdSum"></div>
       <div id="holdList"></div>
-      <p class="note">보유 수량·평단은 아티팩트 원장(db)의 사본이다 — <span id="holdAsof">—</span> 에 옮겨 왔다.
+      <p class="note" id="holdNote" hidden>보유 수량·평단은 아티팩트 원장(db)의 사본이다 — <span id="holdAsof">—</span> 에 옮겨 왔다.
         고치려면 원장에서 고친다. 이 앱 저장소는 공개라서 보유는 <b>암호화해서만</b> 올라가고,
         열쇠를 받은 기기에서만 풀린다. 현재가는 위의 기준 시각 값이다.</p>
     </div>
@@ -710,10 +716,29 @@
       return crypto.subtle.decrypt({name:"AES-GCM", iv:b64u(H.iv)}, key, b64u(H.ct));
     }).then(function(buf){ return JSON.parse(new TextDecoder().decode(buf)); });
   }
-  function lockMsg(why){
+  function lockMsg(why, ask){
     document.getElementById("holdSum").innerHTML = "";
-    document.getElementById("holdList").innerHTML = '<div class="lock">' + why + '</div>';
+    document.getElementById("holdNote").hidden = true;
+    document.getElementById("holdList").innerHTML = '<div class="lock">' + why + (ask ? KEY_FORM : "") + '</div>';
   }
+  // 주소에 #k=… 를 손으로 치는 건 폰에서 틀리기 쉽다(2026-10-08 사용자 "잘 안되는데") — 붙여넣기 칸을 둔다.
+  // 열쇠만 붙여도, 열쇠가 붙은 주소 전체를 붙여도 된다. 실제로 풀어 본 뒤에만 저장한다.
+  var KEY_FORM = '<form id="keyForm"><input id="keyIn" type="password" autocomplete="off" autocapitalize="off" '
+    + 'spellcheck="false" placeholder="열쇠(또는 #k= 붙은 주소) 붙여넣기"><button>열기</button></form>'
+    + '<div class="err" id="keyErr"></div>';
+  document.addEventListener("submit", function(e){
+    if(e.target.id !== "keyForm") return;
+    e.preventDefault();
+    var v = document.getElementById("keyIn").value.replace(/\s+/g, ""), m = /k=([A-Za-z0-9_-]+)/.exec(v);
+    if(m) v = m[1];
+    var err = document.getElementById("keyErr");
+    if(!/^[A-Za-z0-9_-]{40,}$/.test(v)){ err.textContent = "열쇠 모양이 아니다 — 43자 영문·숫자·-·_ 한 줄을 그대로 붙여라."; return; }
+    if(!D || !D.hold) return;
+    openHold(D.hold, v).then(function(){
+      try { localStorage.setItem(KEY_LS, v); } catch(x){}
+      renderHold();
+    }).catch(function(){ err.textContent = "이 열쇠로는 풀리지 않는다 — 한 글자라도 빠졌거나 다른 문자열이다."; });
+  });
   function fmtAmt(v, c){
     if(v == null) return "—";
     var a = Math.abs(v), sg = v < 0 ? "−" : "";
@@ -727,10 +752,11 @@
   function renderHold(){
     var H = D.hold, k = myKey();
     if(!H) return lockMsg("보유 데이터가 이 판에 없다.");
-    if(!k) return lockMsg("이 기기에는 열쇠가 없다. 원장 대화에서 받은 <b>열쇠가 붙은 앱 주소</b>(…/stocks-app/#k=…)로 "
-      + "한 번 열면 이 기기에 저장되고 그 뒤로는 그냥 열어도 보인다.");
+    if(!k) return lockMsg("이 기기에는 열쇠가 없다. 원장 저장소의 <b>data/app-key.txt</b> 한 줄을 복사해 아래에 붙여 넣으면 "
+      + "이 기기에 저장되고 그 뒤로는 그냥 열어도 보인다.", true);
     if(!(window.crypto && crypto.subtle)) return lockMsg("이 브라우저는 복호화(WebCrypto)를 지원하지 않는다.");
     openHold(H, k).then(function(P){
+      document.getElementById("holdNote").hidden = false;
       document.getElementById("holdAsof").textContent = String(P.pulledAt || "—").slice(0, 16).replace("T", " ") + " UTC";
       var M = D.mktidx || {}, fx = {USD: M.USDKRW && M.USDKRW.v, JPY: M.JPYKRW && M.JPYKRW.v / 100, KRW: 1};
       var by = {}; D.stocks.forEach(function(s){ by[s.t] = s; });
@@ -777,7 +803,7 @@
       }).join("");
     }).catch(function(){
       lockMsg("이 기기의 열쇠로 보유를 풀지 못했다(열쇠가 바뀌었을 수 있다 · 지문 " + esc(H.kid) + "). "
-        + "새 열쇠가 붙은 주소로 다시 열어라.");
+        + "새 열쇠를 아래에 붙여 넣어라.", true);
     });
   }
 
@@ -866,7 +892,7 @@
 
 <footer class="wrap">
   조회 전용 스냅샷 · 값의 원본은 아티팩트 원장이다. 투자 판단의 근거가 아니라 내가 세운 규칙의 출력이다.
-  <span class="ver">· 화면 v10</span>
+  <span class="ver">· 화면 v11</span>
 </footer>
 </body>
 </html>
