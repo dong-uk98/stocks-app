@@ -84,6 +84,18 @@
     padding:7px 10px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px}
   .row2 select{flex:0 0 108px}
 
+  /* ── 내 투자 ───────────────────────────── */
+  .hsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+  .hsum div{background:var(--card);border:1px solid var(--line-soft);padding:9px 11px;border-radius:2px}
+  .hsum i{display:block;font-style:normal;font-size:10.5px;color:var(--muted)}
+  .hsum b{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:15px;font-weight:600}
+  .hsum small{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+  .pl-up{color:var(--under)} .pl-dn{color:var(--over)}
+  .c-h .r .hr{display:block;font-family:var(--mono);font-size:19px;font-weight:600}
+  #holdList{display:grid;gap:10px;margin-top:10px}
+  .lock{background:var(--card);border:1px solid var(--line-soft);border-left:3px solid var(--band);
+    padding:12px;font-size:13px;line-height:1.6;color:var(--ink-2)}
+
   /* ── 카드 ─────────────────────────────── */
   #list{padding:12px 14px 20px;display:grid;gap:10px}
   .c{background:var(--card);border:1px solid var(--line-soft);border-left:3px solid var(--muted);
@@ -255,6 +267,16 @@
     <div id="list"></div>
   </section>
 
+  <section id="tab-hold" hidden class="wrap">
+    <div class="sec"><h2>내 투자</h2>
+      <div id="holdSum"></div>
+      <div id="holdList"></div>
+      <p class="note">보유 수량·평단은 아티팩트 원장(db)의 사본이다 — <span id="holdAsof">—</span> 에 옮겨 왔다.
+        고치려면 원장에서 고친다. 이 앱 저장소는 공개라서 보유는 <b>암호화해서만</b> 올라가고,
+        열쇠를 받은 기기에서만 풀린다. 현재가는 위의 기준 시각 값이다.</p>
+    </div>
+  </section>
+
   <section id="tab-cal" hidden class="wrap">
     <div class="sec"><h2>실적·배당 달력</h2>
       <p class="note" style="margin-top:0">다음 실적 발표일과 배당락일. 숫자는 그날 일정 수다 — <b>채운 파랑</b>은 회사가 공지한 실적이 있는 날,
@@ -295,6 +317,7 @@
 
 <nav id="tabs">
   <button data-tab="watch" aria-selected="true"><span class="g">◧</span>워치</button>
+  <button data-tab="hold" aria-selected="false"><span class="g">₩</span>내 투자</button>
   <button data-tab="cal" aria-selected="false"><span class="g">▦</span>일정</button>
   <button data-tab="rule" aria-selected="false"><span class="g">§</span>규칙</button>
   <button data-tab="mkt" aria-selected="false"><span class="g">◈</span>시장</button>
@@ -663,7 +686,99 @@
     document.getElementById("cnt").textContent = D.count == null ? D.stocks.length : D.count;
     RMAP = {};
     (D.rules || []).forEach(function(r){ RMAP[r.id] = r; });
-    chips(); render(); renderRules(); renderAiRule(); renderCal(); renderMkt(); renderCheck();
+    chips(); render(); renderRules(); renderAiRule(); renderCal(); renderMkt(); renderCheck(); renderHold();
+  }
+
+
+  // ── 내 투자 ─────────────────────────────
+  // data.json 의 hold 는 AES-GCM 암호문이다(tools/build_pwa.py). 열쇠는 앱 주소 뒤 #k=… 로
+  // 한 번 받아 이 기기에만 둔다. 열쇠가 없거나 맞지 않으면 숫자를 지어내지 않고 그렇게 적는다.
+  var KEY_LS = "stocks-app-key";
+  (function takeKey(){
+    var m = /[#&]k=([A-Za-z0-9_-]{40,})/.exec(location.hash || "");
+    if(!m) return;
+    try { localStorage.setItem(KEY_LS, m[1]); } catch(e){}
+    // 주소창·방문 기록에 열쇠를 남기지 않는다
+    try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
+  })();
+  function myKey(){ try { return localStorage.getItem(KEY_LS); } catch(e){ return null; } }
+  function b64u(s){ s = s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length % 4) s += "=";
+    return Uint8Array.from(atob(s), function(c){ return c.charCodeAt(0); }); }
+  function openHold(H, k){
+    var raw = b64u(k);
+    return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]).then(function(key){
+      return crypto.subtle.decrypt({name:"AES-GCM", iv:b64u(H.iv)}, key, b64u(H.ct));
+    }).then(function(buf){ return JSON.parse(new TextDecoder().decode(buf)); });
+  }
+  function lockMsg(why){
+    document.getElementById("holdSum").innerHTML = "";
+    document.getElementById("holdList").innerHTML = '<div class="lock">' + why + '</div>';
+  }
+  function fmtAmt(v, c){
+    if(v == null) return "—";
+    var a = Math.abs(v), sg = v < 0 ? "−" : "";
+    if(arguments[2] && v > 0) sg = "+";
+    if(c === "KRW") return sg + "₩" + Math.round(a).toLocaleString("ko-KR");
+    if(c === "JPY") return sg + "¥" + Math.round(a).toLocaleString("ko-KR");
+    return sg + "$" + a.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function pct(v){ return v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2) + "%"; }
+  function plc(v){ return v == null ? "" : v >= 0 ? "pl-up" : "pl-dn"; }
+  function renderHold(){
+    var H = D.hold, k = myKey();
+    if(!H) return lockMsg("보유 데이터가 이 판에 없다.");
+    if(!k) return lockMsg("이 기기에는 열쇠가 없다. 원장 대화에서 받은 <b>열쇠가 붙은 앱 주소</b>(…/stocks-app/#k=…)로 "
+      + "한 번 열면 이 기기에 저장되고 그 뒤로는 그냥 열어도 보인다.");
+    if(!(window.crypto && crypto.subtle)) return lockMsg("이 브라우저는 복호화(WebCrypto)를 지원하지 않는다.");
+    openHold(H, k).then(function(P){
+      document.getElementById("holdAsof").textContent = String(P.pulledAt || "—").slice(0, 16).replace("T", " ") + " UTC";
+      var M = D.mktidx || {}, fx = {USD: M.USDKRW && M.USDKRW.v, JPY: M.JPYKRW && M.JPYKRW.v / 100, KRW: 1};
+      var by = {}; D.stocks.forEach(function(s){ by[s.t] = s; });
+      var rows = [], cur = {}, tot = {cost:0, val:0, ok:true};
+      Object.keys(P.items).forEach(function(t){
+        var h = P.items[t], s = by[t] || {t:t, n:t, c:"USD"};
+        var cost = h.avg != null ? h.avg * h.shares : null;
+        var val = s.px != null ? s.px * h.shares : null;
+        var pl = (cost != null && val != null) ? val - cost : null;
+        rows.push({s:s, h:h, cost:cost, val:val, pl:pl, ret:(pl != null && cost) ? pl / cost * 100 : null});
+        var g = cur[s.c] || (cur[s.c] = {cost:0, val:0, n:0, miss:0});
+        g.n++;
+        if(cost == null || val == null){ g.miss++; return; }
+        g.cost += cost; g.val += val;
+        var r = fx[s.c];
+        if(r){ tot.cost += cost * r; tot.val += val * r; } else tot.ok = false;
+      });
+      rows.sort(function(a, b){ return (b.val == null ? -1 : b.val * (fx[b.s.c] || 0)) - (a.val == null ? -1 : a.val * (fx[a.s.c] || 0)); });
+      var sh = '<div class="hsum">';
+      if(tot.cost){
+        var tp = tot.val - tot.cost;
+        sh += '<div><i>원화 환산 합계' + (tot.ok ? "" : " (환율 없는 통화 제외)") + '</i><b>' + fmtAmt(tot.val, "KRW") + '</b>'
+          + '<small class="' + plc(tp) + '">' + fmtAmt(tp, "KRW", 1) + ' · ' + pct(tp / tot.cost * 100) + '</small></div>';
+      }
+      Object.keys(cur).forEach(function(c){
+        var g = cur[c], p = g.val - g.cost;
+        sh += '<div><i>' + esc(c) + ' ' + g.n + '종목' + (g.miss ? " · 값 없음 " + g.miss : "") + '</i><b>' + fmtAmt(g.val, c) + '</b>'
+          + '<small class="' + plc(p) + '">' + fmtAmt(p, c, 1) + ' · ' + pct(g.cost ? p / g.cost * 100 : null) + '</small></div>';
+      });
+      document.getElementById("holdSum").innerHTML = sh + '</div>';
+      document.getElementById("holdList").innerHTML = rows.map(function(x){
+        var s = x.s, h = x.h;
+        return '<div class="c" data-st="' + esc(s.st || "") + '">'
+          + '<div class="c-h"><div class="id"><b>' + esc(s.n) + '</b><em>' + esc(s.t) + '</em></div>'
+          + '<div class="r"><span class="hr ' + plc(x.ret) + '">' + pct(x.ret) + '</span>'
+          + '<i>수익률</i></div></div>'
+          + '<div class="c-b">'
+          + '<div><i>수량</i><span>' + h.shares.toLocaleString("ko-KR") + '주</span></div>'
+          + '<div><i>평단 → 현재가</i><span>' + fmtPx(h.avg, s.c) + ' → ' + fmtPx(s.px, s.c) + '</span></div>'
+          + '<div><i>평가액</i><span>' + fmtAmt(x.val, s.c) + '</span></div>'
+          + '<div><i>손익</i><span class="' + plc(x.pl) + '">' + fmtAmt(x.pl, s.c, 1) + '</span></div>'
+          + '<div><i>판정 · 비율</i><span>' + esc(LB[s.st] || "—") + (s.r != null ? " · " + fmtR(s) : "") + '</span></div>'
+          + '</div></div>';
+      }).join("");
+    }).catch(function(){
+      lockMsg("이 기기의 열쇠로 보유를 풀지 못했다(열쇠가 바뀌었을 수 있다 · 지문 " + esc(H.kid) + "). "
+        + "새 열쇠가 붙은 주소로 다시 열어라.");
+    });
   }
 
   // ── 조작 ────────────────────────────────
@@ -699,7 +814,7 @@
     [].forEach.call(nav.querySelectorAll("button"), function(x){
       x.setAttribute("aria-selected", x.getAttribute("data-tab") === k);
     });
-    ["watch","cal","rule","mkt","check"].forEach(function(t){
+    ["watch","hold","cal","rule","mkt","check"].forEach(function(t){
       document.getElementById("tab-" + t).hidden = (t !== k);
     });
     window.scrollTo(0, 0);
@@ -751,7 +866,7 @@
 
 <footer class="wrap">
   조회 전용 스냅샷 · 값의 원본은 아티팩트 원장이다. 투자 판단의 근거가 아니라 내가 세운 규칙의 출력이다.
-  <span class="ver">· 화면 v9</span>
+  <span class="ver">· 화면 v10</span>
 </footer>
 </body>
 </html>
