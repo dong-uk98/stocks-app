@@ -101,6 +101,15 @@
   .lock button{padding:8px 12px;font-size:13px;border:1px solid var(--band);background:var(--band);
     color:#fff;border-radius:4px}
   .lock .err{color:var(--over);margin-top:6px}
+  .lock form.col{flex-direction:column}
+  .lock .lk-row{margin-top:10px}
+  .lock .lk-bio{width:100%;padding:10px;font-size:14px}
+  .lock .lk-link{background:none;border:0;color:var(--muted);padding:0;font-size:12px;text-decoration:underline}
+  .lk-bar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12px;color:var(--muted);margin-top:4px}
+  .lk-bar span{flex:1;min-width:180px}
+  .lk-bar button{font-size:12px;padding:6px 10px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);border-radius:4px}
+  .lk-bar em{font-style:normal;color:var(--under)}
+  .lk-msg{font-size:12px;color:var(--band);margin-top:4px}
   /* 내 투자 도넛 — 범주 팔레트(dataviz 기준 팔레트 1~7), 기타·현금은 회색 두 단 */
   :root{--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#4a3aa7;
     --s-etc:#7d8794;--s-cash:#c4cbd3;--c-usd:#3566b8;--c-jpy:#9C6716;--c-krw:#00876a}
@@ -735,45 +744,182 @@
   // ── 내 투자 ─────────────────────────────
   // data.json 의 hold 는 AES-GCM 암호문이다(tools/build_pwa.py). 열쇠는 앱 주소 뒤 #k=… 로
   // 한 번 받아 이 기기에만 둔다. 열쇠가 없거나 맞지 않으면 숫자를 지어내지 않고 그렇게 적는다.
-  var KEY_LS = "stocks-app-key";
+  // ── 잠금(2026-10-08 사용자 "지문·비밀번호를 넣어야 보이게 — 남이 내 폰으로 함부로 못 보게") ──
+  // 열쇠를 평문으로 기기에 두지 않는다. 비밀번호(숫자 6자리 이상)로 만든 키(PBKDF2 31만 회)로 열쇠를 감싸
+  // localStorage 에는 감싼 것만 둔다. 지문은 WebAuthn 의 PRF 확장으로 기기 생체 인증이 내주는 비밀값에서
+  // 두 번째 감싸개를 만든다 — 지문이 '통과 여부만 보는 문'이 아니라 실제로 열쇠를 푸는 쪽이다.
+  // PRF 를 못 주는 브라우저면 지문은 켜지 않고 비밀번호만 쓴다(문만 있는 지문은 우회가 쉬워서 들이지 않는다).
+  // 풀린 열쇠는 메모리에만 있고, 앱이 화면에서 내려가거나 5분 동안 손대지 않으면 지운다.
+  var KEY_LS = "stocks-app-key";        // 옛 판(v11·v12)이 평문으로 두던 자리 — 잠금을 만들면 지운다
+  var LOCK_LS = "stocks-app-lock", PEND_SS = "stocks-app-pend", FAIL_LS = "stocks-app-fail";
+  var PBKDF2_ITER = 310000, IDLE_MS = 5 * 60 * 1000;
+  var UNLOCKED = null, idleT = null;
   (function takeKey(){
     var m = /[#&]k=([A-Za-z0-9_-]{40,})/.exec(location.hash || "");
     if(!m) return;
-    try { localStorage.setItem(KEY_LS, m[1]); } catch(e){}
+    // 비밀번호를 정하기 전까지만 이 탭 세션에 둔다(탭을 닫으면 사라진다)
+    try { sessionStorage.setItem(PEND_SS, m[1]); } catch(e){}
     // 주소창·방문 기록에 열쇠를 남기지 않는다
     try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
   })();
-  function myKey(){ try { return localStorage.getItem(KEY_LS); } catch(e){ return null; } }
+  function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function lsSet(k, v){ try { if(v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch(e){} }
+  function lockRec(){ try { return JSON.parse(lsGet(LOCK_LS) || "null"); } catch(e){ return null; } }
+  function pendKey(){
+    var p = null; try { p = sessionStorage.getItem(PEND_SS); } catch(e){}
+    return p || lsGet(KEY_LS);
+  }
   function b64u(s){ s = s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length % 4) s += "=";
     return Uint8Array.from(atob(s), function(c){ return c.charCodeAt(0); }); }
+  function e64(u8){ var s = ""; for(var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s); }
+  function rnd(n){ return crypto.getRandomValues(new Uint8Array(n)); }
   function openHold(H, k){
     var raw = b64u(k);
     return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]).then(function(key){
       return crypto.subtle.decrypt({name:"AES-GCM", iv:b64u(H.iv)}, key, b64u(H.ct));
     }).then(function(buf){ return JSON.parse(new TextDecoder().decode(buf)); });
   }
-  function lockMsg(why, ask){
+  function pinKey(pin, salt, iter){
+    return crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveKey"]).then(function(k){
+      return crypto.subtle.deriveKey({name:"PBKDF2", salt:salt, iterations:iter, hash:"SHA-256"}, k,
+        {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]); });
+  }
+  function prfKey(secret){
+    return crypto.subtle.importKey("raw", secret, "HKDF", false, ["deriveKey"]).then(function(k){
+      return crypto.subtle.deriveKey({name:"HKDF", hash:"SHA-256", salt:new Uint8Array(0),
+        info:new TextEncoder().encode("stocks-app hold v1")}, k, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]); });
+  }
+  function wrapK(wk, keyStr){
+    var iv = rnd(12);
+    return crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, wk, new TextEncoder().encode(keyStr))
+      .then(function(ct){ return {iv:e64(iv), ct:e64(new Uint8Array(ct))}; });
+  }
+  function unwrapK(wk, w){
+    return crypto.subtle.decrypt({name:"AES-GCM", iv:b64u(w.iv)}, wk, b64u(w.ct))
+      .then(function(b){ return new TextDecoder().decode(b); });
+  }
+  // 생체 인증 — PRF 가 없으면 throw "noprf"
+  function bioGet(credId, salt){
+    return navigator.credentials.get({publicKey:{challenge:rnd(32), allowCredentials:[{type:"public-key", id:credId}],
+      userVerification:"required", timeout:60000, extensions:{prf:{eval:{first:salt}}}}}).then(function(a){
+      var r = a.getClientExtensionResults ? a.getClientExtensionResults() : {};
+      if(!r.prf || !r.prf.results || !r.prf.results.first) throw new Error("noprf");
+      return r.prf.results.first;
+    });
+  }
+  function bioRegister(){
+    var salt = rnd(32);
+    return navigator.credentials.create({publicKey:{
+      rp:{name:"주식 워치리스트"}, user:{id:rnd(16), name:"holdings", displayName:"내 투자"},
+      challenge:rnd(32), pubKeyCredParams:[{type:"public-key", alg:-7}, {type:"public-key", alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:"platform", userVerification:"required", residentKey:"preferred"},
+      timeout:60000, extensions:{prf:{eval:{first:salt}}}}}).then(function(cred){
+      var ext = cred.getClientExtensionResults ? cred.getClientExtensionResults() : {};
+      if(!ext.prf || ext.prf.enabled === false) throw new Error("noprf");
+      var id = new Uint8Array(cred.rawId), first = ext.prf.results && ext.prf.results.first;
+      return (first ? Promise.resolve(first) : bioGet(id, salt)).then(prfKey).then(function(wk){
+        return wrapK(wk, UNLOCKED); }).then(function(w){
+        var rec = lockRec(); rec.bio = {id:e64(id), salt:e64(salt), w:w}; lsSet(LOCK_LS, JSON.stringify(rec)); });
+    });
+  }
+  // 비밀번호 틀림 — 5번부터 30초·60초·120초… 기다리게 한다
+  function failState(){ try { return JSON.parse(lsGet(FAIL_LS) || '{"n":0,"until":0}'); } catch(e){ return {n:0, until:0}; } }
+  function failBump(){ var f = failState(); f.n++; if(f.n >= 5) f.until = Date.now() + 30000 * Math.pow(2, Math.min(f.n - 5, 6)); lsSet(FAIL_LS, JSON.stringify(f)); return f; }
+  function lockNow(){
+    UNLOCKED = null; HV = null; clearTimeout(idleT);
+    document.getElementById("holdSum").innerHTML = "";
+    document.getElementById("holdList").innerHTML = "";
+    document.getElementById("holdNote").hidden = true;
+    if(D) renderHold();
+  }
+  function touchIdle(){ if(!UNLOCKED) return; clearTimeout(idleT); idleT = setTimeout(lockNow, IDLE_MS); }
+  // 앱이 화면에서 내려가면(홈 버튼·다른 앱·화면 꺼짐) 바로 잠근다
+  document.addEventListener("visibilitychange", function(){ if(document.hidden && UNLOCKED) lockNow(); });
+  window.addEventListener("pagehide", function(){ if(UNLOCKED) lockNow(); });
+  ["click","touchstart","keydown","scroll"].forEach(function(ev){ document.addEventListener(ev, touchIdle, {passive:true}); });
+
+  function lockMsg(why, extra){
     document.getElementById("holdSum").innerHTML = "";
     document.getElementById("holdNote").hidden = true;
-    document.getElementById("holdList").innerHTML = '<div class="lock">' + why + (ask ? KEY_FORM : "") + '</div>';
+    document.getElementById("holdList").innerHTML = '<div class="lock">' + why + (extra || "") + '</div>';
   }
+  var PIN_IN = function(id, ph){ return '<input id="' + id + '" type="password" inputmode="numeric" pattern="[0-9]*" '
+    + 'autocomplete="off" placeholder="' + ph + '">'; };
   // 주소에 #k=… 를 손으로 치는 건 폰에서 틀리기 쉽다(2026-10-08 사용자 "잘 안되는데") — 붙여넣기 칸을 둔다.
-  // 열쇠만 붙여도, 열쇠가 붙은 주소 전체를 붙여도 된다. 실제로 풀어 본 뒤에만 저장한다.
   var KEY_FORM = '<form id="keyForm"><input id="keyIn" type="password" autocomplete="off" autocapitalize="off" '
-    + 'spellcheck="false" placeholder="열쇠(또는 #k= 붙은 주소) 붙여넣기"><button>열기</button></form>'
+    + 'spellcheck="false" placeholder="열쇠(또는 #k= 붙은 주소) 붙여넣기"><button>다음</button></form>'
     + '<div class="err" id="keyErr"></div>';
+  var SET_FORM = '<form id="pinSet" class="col">' + PIN_IN("pin1", "비밀번호(숫자 6자리 이상)") + PIN_IN("pin2", "한 번 더")
+    + '<button>잠금 만들기</button></form><div class="err" id="keyErr"></div>';
+  function unlockForm(rec){
+    return '<form id="pinOpen">' + PIN_IN("pinIn", "비밀번호") + '<button>열기</button></form>'
+      + (rec.bio ? '<div class="lk-row"><button type="button" id="bioOpen" class="lk-bio">지문으로 열기</button></div>' : "")
+      + '<div class="err" id="keyErr"></div>'
+      + '<div class="lk-row"><button type="button" id="lockReset" class="lk-link">비밀번호를 잊었다 — 잠금 지우고 열쇠 다시 넣기</button></div>';
+  }
+  function setErr(t){ var e = document.getElementById("keyErr"); if(e) e.textContent = t; }
+
   document.addEventListener("submit", function(e){
-    if(e.target.id !== "keyForm") return;
+    var id = e.target.id;
+    if(["keyForm","pinSet","pinOpen"].indexOf(id) < 0) return;
     e.preventDefault();
-    var v = document.getElementById("keyIn").value.replace(/\s+/g, ""), m = /k=([A-Za-z0-9_-]+)/.exec(v);
-    if(m) v = m[1];
-    var err = document.getElementById("keyErr");
-    if(!/^[A-Za-z0-9_-]{40,}$/.test(v)){ err.textContent = "열쇠 모양이 아니다 — 43자 영문·숫자·-·_ 한 줄을 그대로 붙여라."; return; }
     if(!D || !D.hold) return;
-    openHold(D.hold, v).then(function(){
-      try { localStorage.setItem(KEY_LS, v); } catch(x){}
-      renderHold();
-    }).catch(function(){ err.textContent = "이 열쇠로는 풀리지 않는다 — 한 글자라도 빠졌거나 다른 문자열이다."; });
+    if(id === "keyForm"){
+      var v = document.getElementById("keyIn").value.replace(/\s+/g, ""), m = /k=([A-Za-z0-9_-]+)/.exec(v);
+      if(m) v = m[1];
+      if(!/^[A-Za-z0-9_-]{40,}$/.test(v)) return setErr("열쇠 모양이 아니다 — 43자 영문·숫자·-·_ 한 줄을 그대로 붙여라.");
+      openHold(D.hold, v).then(function(){
+        try { sessionStorage.setItem(PEND_SS, v); } catch(x){}
+        renderHold();
+      }).catch(function(){ setErr("이 열쇠로는 풀리지 않는다 — 한 글자라도 빠졌거나 다른 문자열이다."); });
+    } else if(id === "pinSet"){
+      var p1 = document.getElementById("pin1").value, p2 = document.getElementById("pin2").value, k = pendKey();
+      if(!/^[0-9]{6,}$/.test(p1)) return setErr("숫자 6자리 이상으로 정해라.");
+      if(p1 !== p2) return setErr("두 번 넣은 비밀번호가 다르다.");
+      if(!k) return renderHold();
+      var salt = rnd(16);
+      pinKey(p1, salt, PBKDF2_ITER).then(function(wk){ return wrapK(wk, k); }).then(function(w){
+        lsSet(LOCK_LS, JSON.stringify({v:1, salt:e64(salt), iter:PBKDF2_ITER, pin:w}));
+        lsSet(KEY_LS, null); lsSet(FAIL_LS, null);           // 평문 열쇠는 지운다
+        try { sessionStorage.removeItem(PEND_SS); } catch(x){}
+        UNLOCKED = k; touchIdle(); renderHold();
+      }).catch(function(){ setErr("잠금을 만들지 못했다."); });
+    } else if(id === "pinOpen"){
+      var rec = lockRec(), f = failState();
+      if(f.until > Date.now()) return setErr(Math.ceil((f.until - Date.now()) / 1000) + "초 뒤에 다시 넣어라(여러 번 틀림).");
+      var pin = document.getElementById("pinIn").value;
+      setErr("확인 중…");
+      pinKey(pin, b64u(rec.salt), rec.iter).then(function(wk){ return unwrapK(wk, rec.pin); }).then(function(k){
+        lsSet(FAIL_LS, null); UNLOCKED = k; touchIdle(); renderHold();
+      }).catch(function(){
+        var g = failBump();
+        document.getElementById("pinIn").value = "";
+        setErr("비밀번호가 틀렸다" + (g.until > Date.now() ? " — " + Math.ceil((g.until - Date.now()) / 1000) + "초 기다려라." : " (" + g.n + "번째)."));
+      });
+    }
+  });
+  document.addEventListener("click", function(e){
+    var t = e.target;
+    if(t.id === "bioOpen"){
+      var rec = lockRec(); if(!rec || !rec.bio) return;
+      bioGet(b64u(rec.bio.id), b64u(rec.bio.salt)).then(prfKey).then(function(wk){ return unwrapK(wk, rec.bio.w); })
+        .then(function(k){ lsSet(FAIL_LS, null); UNLOCKED = k; touchIdle(); renderHold(); })
+        .catch(function(){ setErr("지문으로 열지 못했다 — 비밀번호를 넣어라."); });
+    } else if(t.id === "lockReset"){
+      if(!confirm("이 기기의 잠금(비밀번호·지문)을 지운다. 다시 보려면 열쇠를 새로 붙여 넣어야 한다. 지울까?")) return;
+      lsSet(LOCK_LS, null); lsSet(FAIL_LS, null); lsSet(KEY_LS, null); UNLOCKED = null; renderHold();
+    } else if(t.id === "lockNow"){
+      lockNow();
+    } else if(t.id === "bioAdd"){
+      t.disabled = true; t.textContent = "등록 중…";
+      bioRegister().then(function(){ renderHold(); }).catch(function(x){
+        t.disabled = false; t.textContent = "지문 등록";
+        var m = document.getElementById("bioMsg");
+        if(m) m.textContent = (x && x.message === "noprf")
+          ? "이 브라우저는 지문으로 열쇠를 풀 수 없다(WebAuthn PRF 미지원) — 비밀번호로 연다. 폰 기본 Chrome 최신판에서 다시 해 봐라."
+          : "지문 등록을 마치지 못했다(취소했거나 기기에 지문이 없다).";
+      });
+    }
   });
   function fmtAmt(v, c){
     if(v == null) return "—";
@@ -816,15 +962,27 @@
     return '<svg viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '" class="dn">' + h + (center || "") + '</svg>';
   }
   function renderHold(){
-    var H = D.hold, k = myKey();
+    var H = D.hold;
     if(!H) return lockMsg("보유 데이터가 이 판에 없다.");
-    if(!k) return lockMsg("이 기기에는 열쇠가 없다. 원장 저장소의 <b>data/app-key.txt</b> 한 줄을 복사해 아래에 붙여 넣으면 "
-      + "이 기기에 저장되고 그 뒤로는 그냥 열어도 보인다.", true);
     if(!(window.crypto && crypto.subtle)) return lockMsg("이 브라우저는 복호화(WebCrypto)를 지원하지 않는다.");
-    openHold(H, k).then(function(P){ drawHold(P); }).catch(function(){
-      lockMsg("이 기기의 열쇠로 보유를 풀지 못했다(열쇠가 바뀌었을 수 있다 · 지문 " + esc(H.kid) + "). "
-        + "새 열쇠를 아래에 붙여 넣어라.", true);
+    if(UNLOCKED){
+      return openHold(H, UNLOCKED).then(function(P){ drawHold(P); }).catch(function(){
+        lsSet(LOCK_LS, null); UNLOCKED = null;
+        lockMsg("저장된 열쇠로 보유를 풀지 못했다(열쇠가 바뀌었을 수 있다 · 지문 " + esc(H.kid) + "). 새 열쇠를 붙여 넣어라.", KEY_FORM);
+      });
+    }
+    var rec = lockRec();
+    if(rec) return lockMsg("<b>잠겨 있다.</b> " + (rec.bio ? "비밀번호나 지문으로" : "비밀번호로") + " 연다.", unlockForm(rec));
+    var k = pendKey();
+    if(k) return openHold(H, k).then(function(){
+      lockMsg("<b>잠금을 먼저 만든다.</b> 이 기기에서 내 투자를 열 때마다 넣을 비밀번호를 정해라(숫자 6자리 이상). "
+        + "열쇠는 이 비밀번호로 감싸서만 기기에 남는다. 지문은 연 다음에 등록할 수 있다.", SET_FORM);
+    }).catch(function(){
+      lsSet(KEY_LS, null); try { sessionStorage.removeItem(PEND_SS); } catch(x){}
+      lockMsg("이 기기의 열쇠로 보유를 풀지 못했다(열쇠가 바뀌었을 수 있다 · 지문 " + esc(H.kid) + "). 새 열쇠를 붙여 넣어라.", KEY_FORM);
     });
+    lockMsg("이 기기에는 열쇠가 없다. 원장 저장소의 <b>data/app-key.txt</b> 한 줄을 복사해 아래에 붙여 넣은 뒤 "
+      + "이 기기용 비밀번호를 정하면, 그 뒤로는 비밀번호(또는 지문)로 연다.", KEY_FORM);
   }
   function drawHold(P){
     document.getElementById("holdNote").hidden = false;
@@ -886,6 +1044,10 @@
     if(notes.length) sh += '<p class="hwarn">' + notes.join("<br>") + '</p>';
     sh += '<div class="htime">시세 조회 <b>' + esc(stampOf(D.asof)) + '</b> · 보유 원장 사본 <b>' + esc(stampOf(P.pulledAt))
       + '</b> · 환율 USD ' + (fx.USD ? fx.USD.toLocaleString("ko-KR") : "—") + ' · JPY100 ' + (M.JPYKRW ? M.JPYKRW.v.toLocaleString("ko-KR") : "—") + '</div>';
+    var rec = lockRec(), canBio = !!(window.PublicKeyCredential && navigator.credentials);
+    sh = '<div class="lk-bar"><span>열림 · 화면을 벗어나거나 5분 손대지 않으면 다시 잠긴다</span>'
+      + (rec && !rec.bio && canBio ? '<button type="button" id="bioAdd">지문 등록</button>' : (rec && rec.bio ? '<em>지문 켜짐</em>' : ''))
+      + '<button type="button" id="lockNow">지금 잠그기</button></div><div id="bioMsg" class="lk-msg"></div>' + sh;
     document.getElementById("holdSum").innerHTML = sh;
 
     document.getElementById("holdList").innerHTML = rows.map(function(x){
@@ -1021,7 +1183,7 @@
 
 <footer class="wrap">
   조회 전용 스냅샷 · 값의 원본은 아티팩트 원장이다. 투자 판단의 근거가 아니라 내가 세운 규칙의 출력이다.
-  <span class="ver">· 화면 v12</span>
+  <span class="ver">· 화면 v13</span>
 </footer>
 </body>
 </html>
