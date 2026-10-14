@@ -273,6 +273,12 @@
   .cald .n.dv{border:1px solid var(--under);color:var(--under)}
   .cald .dvd{width:5px;height:5px;border-radius:50%;background:var(--under)}
   .etg.dv{border-color:var(--under);color:var(--under)}
+  /* 금융 주요 일정(FOMC·CPI 등) — 종목 일정과 섞이지 않게 호박색 */
+  .cald .n.mc{border:1px solid var(--band);color:var(--band)}
+  .cald .dots{display:flex;gap:2px}
+  .cald .mcd{width:5px;height:5px;border-radius:1px;background:var(--band);transform:rotate(45deg)}
+  .etg.mc{border-color:var(--band);color:var(--band)}
+  .etg.mc.k1{background:var(--band);color:var(--card)}
   .cald[data-d]{cursor:pointer}
   .cday{padding:9px 0;border-bottom:1px dashed var(--line-soft);scroll-margin-top:12px}
   .cday.hl{background:var(--accent-soft)}
@@ -329,9 +335,10 @@
   </section>
 
   <section id="tab-cal" hidden class="wrap">
-    <div class="sec"><h2>실적·배당 달력</h2>
-      <p class="note" style="margin-top:0">다음 실적 발표일과 배당락일. 숫자는 그날 일정 수다 — <b>채운 파랑</b>은 회사가 공지한 실적이 있는 날,
-        <b>점선</b>은 소스 추정 실적만 있는 날, <b>초록</b>은 배당락만 있는 날, 숫자 아래 <b>초록 점</b>은 실적과 배당락이 겹친 날이다.
+    <div class="sec"><h2>실적·배당·금융 일정</h2>
+      <p class="note" style="margin-top:0">다음 실적 발표일과 배당락일, 그리고 금리 결정·물가·고용 같은 <b>금융 주요 일정</b>. 숫자는 그날 일정 수다 — <b>채운 파랑</b>은 회사가 공지한 실적이 있는 날,
+        <b>점선</b>은 소스 추정 실적만 있는 날, <b>초록</b>은 배당락만 있는 날, <b>호박색</b>은 금융 일정만 있는 날이다. 숫자 아래 <b>초록 점</b>은 배당락이, <b>호박색 마름모</b>는 금융 일정이 같이 있다는 뜻이다.
+        금융 일정은 <b>한국 시각</b>이다(FOMC 결정은 한국 날짜로 다음날 새벽).
         배당락은 회사가 선언한 것만 올린다 — 배당락일 전날까지 사야 그 회차 배당을 받는다. 날짜를 누르면 아래 목록의 그날로 간다.</p>
       <div id="calMonths"></div></div>
     <div class="sec"><h2>날짜순</h2><div id="calList"></div><div class="note" id="calRest"></div></div>
@@ -630,7 +637,20 @@
       else if(X.ex >= today){ var o = {s:s, d:X.ex, x:X, dv:true}; up.push(o); (by[X.ex] = by[X.ex] || []).push(o); ndx++; }
       else dpast.push({s:s, x:X});
     });
+    // 금융 주요 일정 — data.json 의 macro(tools/macro.py). 한국 시각 날짜로 싣는다. 지난 것은 뺀다
+    var M = D.macro, nmc = 0;
+    if(M) M.items.forEach(function(e){
+      if(e.d < today) return;
+      var o = {d:e.d, mc:true, e:e}; up.push(o); (by[e.d] = by[e.d] || []).push(o); nmc++;
+    });
     up.sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+    // 같은 날 안에서는 금융 일정을 시각순으로 먼저 둔다(시장 전체에 걸리는 일이라)
+    Object.keys(by).forEach(function(k){
+      by[k].sort(function(a, b){
+        if(!!a.mc !== !!b.mc) return a.mc ? -1 : 1;
+        return a.mc ? ((a.e.t || "99") < (b.e.t || "99") ? -1 : 1) : 0;
+      });
+    });
     var WD = ["일","월","화","수","목","금","토"], FQ = {Quarterly:"분기", "Semi-Annual":"반기", Annual:"연", Monthly:"월"}, h = "";
     if(up.length){
       var t0 = new Date(up[0].d + "T00:00:00"), y = t0.getFullYear(), m = t0.getMonth();
@@ -644,9 +664,12 @@
           c += '<button type="button" class="cald' + ((f + d - 1) % 7 === 0 ? " sun" : "") + (k < today ? " past" : "") + (k === today ? " today" : "") + '"'
             + (X.length ? ' data-d="' + k + '"' : ' disabled') + '><span class="dn">' + d + '</span>'
             + (X.length ? (function(){
-                var er = X.filter(function(x){ return !x.dv; }), dv = X.length - er.length;
-                var cls = !er.length ? " dv" : (er.some(function(x){ return !x.est; }) ? " cf" : "");
-                return '<span class="n' + cls + '">' + X.length + '</span>' + (er.length && dv ? '<span class="dvd"></span>' : '');
+                var er = X.filter(function(x){ return !x.dv && !x.mc; }), dv = X.filter(function(x){ return x.dv; }).length,
+                    mc = X.filter(function(x){ return x.mc; }).length;
+                var cls = er.length ? (er.some(function(x){ return !x.est; }) ? " cf" : "") : dv ? " dv" : " mc";
+                return '<span class="n' + cls + '">' + X.length + '</span>'
+                  + ((er.length && dv) || ((er.length || dv) && mc) ? '<span class="dots">' + (er.length && dv ? '<span class="dvd"></span>' : '')
+                    + ((er.length || dv) && mc ? '<span class="mcd"></span>' : '') + '</span>' : '');
               })() : '') + '</button>';
         }
         h += '<div class="calm"><h3>' + y + '년 ' + (m + 1) + '월<span>' + n + '건</span></h3><div class="calg">'
@@ -660,6 +683,17 @@
       var dt = new Date(k + "T00:00:00"), dd = Math.round((dt - T) / 864e5);
       return '<div class="cday" id="cd-' + k + '"><div class="w"><b>' + (dt.getMonth() + 1) + '월 ' + dt.getDate() + '일 (' + WD[dt.getDay()] + ')</b><span>'
         + (dd === 0 ? "오늘" : "D-" + dd) + '</span></div><ul>' + by[k].map(function(x){
+          if(x.mc){
+            var e = x.e, sub = [];
+            if(e.t) sub.push(e.t + " 한국");
+            if(e.us) sub.push("미국 날짜 · 시각 미공지(한국은 다음날 새벽)");
+            if(e.sep) sub.push("경제전망·점도표");
+            if(e.prev) sub.push("현재 " + e.prev);
+            if(e.cons) sub.push("예상 " + e.cons);
+            if(e.act) sub.push("결과 " + e.act);
+            return '<li><b>' + esc(e.n) + '</b><span class="etg mc' + (e.g === 1 ? " k1" : "") + '">' + (e.g === 1 ? "핵심" : "금융") + '</span>'
+              + (sub.length ? '<i>' + esc(sub.join(" · ")) + '</i>' : '') + '</li>';
+          }
           if(x.dv) return '<li><b>' + esc(x.s.n) + '</b><i>' + esc(x.s.t) + '</i><span class="etg dv">배당락</span><i>' + esc(x.x.amt || "")
             + (x.x.pay ? ' · 지급 ' + x.x.pay.slice(5).replace("-", "/") : "") + (x.x.freq ? ' · ' + esc(FQ[x.x.freq] || x.x.freq) : "") + '</i></li>';
           return '<li><b>' + esc(x.s.n) + '</b><i>' + esc(x.s.t) + '</i><span class="etg' + (x.est ? " est" : "") + '">' + (x.est ? "추정" : "확정") + '</span>'
@@ -676,6 +710,10 @@
     if(dnone.length) r += '<b>무배당 ' + dnone.length + '종</b> — ' + dnone.map(function(s){ return esc(s.n); }).join(" · ") + '<br>';
     if(dfail.length) r += '<b>배당 미수집</b> — ' + dfail.map(function(s){ return esc(s.n) + (E.dfail && E.dfail[s.t] ? '(' + esc(E.dfail[s.t]) + ')' : ''); }).join(" · ") + '<br>';
     r += '수집 ' + esc(E.asof.slice(0, 16).replace("T", " ")) + ' UTC · stockanalysis.com';
+    if(M) r += '<br><b>금융 일정 ' + nmc + '건</b> — FOMC 날짜는 연준 일정표(federalreserve.gov), 나머지와 시각은 나스닥 경제 일정에서 받았다. '
+      + '나스닥은 약 3주 앞까지만 채우고 끝쪽은 듬성하다' + (M.horizon ? '(행이 있는 마지막 날 ' + esc(M.horizon.slice(5).replace("-", "/")) + ')' : '')
+      + ' — 그 뒤 날짜에 고용보고서·CPI 가 안 보이는 건 소스에 아직 안 올라온 것이지 일정이 없다는 뜻이 아니다. '
+      + '수집 ' + esc(M.asof.slice(0, 16).replace("T", " ")) + ' UTC';
     document.getElementById("calRest").innerHTML = r;
   }
   document.getElementById("calMonths").addEventListener("click", function(e){
@@ -1218,7 +1256,7 @@
 
 <footer class="wrap">
   조회 전용 스냅샷 · 값의 원본은 아티팩트 원장이다. 투자 판단의 근거가 아니라 내가 세운 규칙의 출력이다.
-  <span class="ver">· 화면 v14</span>
+  <span class="ver">· 화면 v15</span>
 </footer>
 </body>
 </html>
