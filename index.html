@@ -212,6 +212,17 @@
   .c details .warn{font-size:12px;color:var(--ink-2);margin-top:8px;padding:8px 10px;
     background:var(--accent-soft);border-left:2px solid var(--band);line-height:1.5}
   .empty{color:var(--muted);font-size:13px;text-align:center;padding:30px 0}
+  /* 회차 스냅샷 표 — 열이 회차라 달마다 한 칸씩 는다. 폰 폭을 넘으면 표만 옆으로 민다(첫 열은 고정) */
+  .snw{overflow-x:auto;margin-top:7px;-webkit-overflow-scrolling:touch}
+  .snt{border-collapse:collapse;font-size:12px;min-width:100%}
+  .snt th,.snt td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line-soft);white-space:nowrap}
+  .snt th{font-weight:600;color:var(--ink-2);font-size:11.5px}
+  .snt th small,.snt td small{display:block;font-weight:400;font-size:10.5px;color:var(--muted)}
+  .snt td{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2)}
+  .snt tr>:first-child{text-align:left;position:sticky;left:0;background:var(--card);font-family:inherit;color:var(--muted);font-weight:400}
+  .snt td.under{color:var(--under);font-weight:600} .snt td.band{color:var(--band)} .snt td.over{color:var(--over)}
+  .snt th.rv{box-shadow:inset 2px 0 0 var(--band)}
+  .snn{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}
 
   /* ── 시장·검산 ────────────────────────── */
   .sec{padding:14px 0 6px}
@@ -480,6 +491,11 @@
     // 종목별 체크리스트 — 펼칠 때 그린다(문항 120여 개를 카드마다 미리 그리면 목록이 무거워진다)
     if(s.cl) h += '<details class="clx" data-t="' + esc(s.t) + '"><summary>체크리스트 '
       + s.cl.avg.toFixed(2) + '/5 · ' + s.cl.n + '문항</summary><div class="clb"></div></details>';
+    // 회차 스냅샷 — 그때의 가격·비율·점수(사용자 요청 2026-10-16). 펼칠 때 그린다
+    var SN = D.snap && D.snap.t[s.t];
+    if(SN && SN.some(function(x){ return x; }))
+      h += '<details class="snx" data-t="' + esc(s.t) + '"><summary>스냅샷 · '
+        + SN.filter(function(x){ return x; }).length + '회차</summary><div class="snb"></div></details>';
     if(X && (X.a || X.b != null)){
       h += '<details><summary>AI 노출' + (X.a && X.a.g ? ' · 대체 ' + esc(X.a.g) : '') + '</summary><div class="ais">';
       if(X.a){
@@ -526,9 +542,37 @@
         }).join("");
     }).join("");
   }
+  // 행은 가격 · 비율 · 점수, 열은 회차. 점수는 앱의 점수(체크리스트 평균 /5)를 크게, 순점을 작게 —
+  // 1회차(09-16)는 체크리스트가 생기기 전이라 순점만 있다. 규칙 판이 바뀐 회차는 열 머리에 선을 긋는다
+  function snBody(t){
+    var C = D.snap.cyc, V = D.snap.t[t] || [], s = D.stocks.filter(function(x){ return x.t === t; })[0] || {};
+    var th = '<tr><th></th>', px = '<tr><td>가격</td>', rr = '<tr><td>비율</td>', sc = '<tr><td>점수</td>', prev = null, rvx = false;
+    C.forEach(function(c, i){
+      var v = V[i], rv = i > 0 && c.rv !== C[i - 1].rv;
+      if(rv) rvx = true;
+      th += '<th' + (rv ? ' class="rv" title="규칙 판이 바뀌었다 — ' + esc(C[i - 1].rv) + ' → ' + esc(c.rv) + '"' : '') + '>'
+        + c.n + '회차<small>' + esc(c.d.slice(2).replace(/-/g, ".")) + '</small></th>';
+      if(!v){ px += '<td>—<small>편입 전</small></td>'; rr += '<td>—</td>'; sc += '<td>—</td>'; return; }
+      var d = (prev && prev[0] && v[0]) ? (v[0] / prev[0] - 1) * 100 : null;
+      px += '<td>' + fmtPx(v[0], s.c) + (d == null ? '' : '<small class="' + (d >= 0 ? "up" : "dn") + '">' + (d >= 0 ? "+" : "") + d.toFixed(1) + '%</small>') + '</td>';
+      rr += '<td class="' + esc(v[2] || "") + '">' + (v[1] == null ? "—" : fmtR({r: v[1], st: v[2]}))
+        + '<small>' + esc(LB[v[2]] || v[2] || "") + '</small></td>';
+      sc += '<td>' + (v[3] == null ? "—" : v[3].toFixed(2)) + '<small>순점 ' + (v[4] == null ? "—" : (v[4] > 0 ? "+" : "") + v[4]) + '</small></td>';
+      prev = v;
+    });
+    return '<div class="snw"><table class="snt">' + th + '</tr>' + px + '</tr>' + rr + '</tr>' + sc + '</tr></table></div>'
+      + '<div class="snn">가격 밑 %는 직전 회차 대비 · 점수는 체크리스트 평균(/5), 순점은 가점−감점'
+      + (rvx ? ' · <b>세로 선</b>이 그어진 회차부터 규칙이 바뀌어 그 앞과 점수를 같은 자로 비교할 수 없다' : '') + '</div>';
+  }
   document.addEventListener("toggle", function(e){
     var d = e.target;
-    if(!d.classList || !d.classList.contains("clx") || !d.open) return;
+    if(!d.classList || !d.open) return;
+    if(d.classList.contains("snx")){
+      var n = d.querySelector(".snb");
+      if(n && !n.innerHTML) n.innerHTML = snBody(d.getAttribute("data-t"));
+      return;
+    }
+    if(!d.classList.contains("clx")) return;
     var b = d.querySelector(".clb");
     if(b && !b.innerHTML) b.innerHTML = clBody(d.getAttribute("data-t"));
   }, true);
