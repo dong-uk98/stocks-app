@@ -543,13 +543,14 @@
     }).join("");
   }
   // 행은 가격 · 비율 · 점수, 열은 회차. 큰 숫자는 **지금 규칙으로 그 회차 가격을 다시 잰 값**(tools/rescore.py).
-  // 그 회차의 재무(수집 원자료)가 있으면 그것으로 비율·점수를 다 낸다. 없으면(1회차 · 편입 전 회차) 비율만
-  // 지금 시작가로 내고 점수는 '확인 불가'다(사용자 결정 2026-10-16). 작은 '기록'은 스냅샷에 남은 그때 규칙의 값
+  // 그 회차의 재무(수집 원자료)가 있으면 그것으로, 없어도 지금 재무가 그때와 같다고 확인되면 재구성(‡)해 비율·점수를
+  // 다 낸다. 확인이 안 되면 비율만 지금 시작가로(†) 내고 점수는 '확인 불가'다(사용자 결정 2026-10-16).
+  // 작은 '기록'은 스냅샷에 남은 그때 규칙의 값
   function snBody(t){
     var C = D.snap.cyc, V = D.snap.t[t] || [], RE = D.snap.re, W = RE ? (RE.t[t] || []) : [];
     var s = D.stocks.filter(function(x){ return x.t === t; })[0] || {};
     function sg(n){ return n == null ? "—" : (n > 0 ? "+" : "") + n; }
-    var th = '<tr><th></th>', px = '<tr><td>가격</td>', rr = '<tr><td>비율</td>', sc = '<tr><td>점수</td>', prev = null, fill = false, now = false;
+    var th = '<tr><th></th>', px = '<tr><td>가격</td>', rr = '<tr><td>비율</td>', sc = '<tr><td>점수</td>', prev = null, fill = false, now = false, rec = false;
     C.forEach(function(c, i){
       var v = V[i], w = W[i] || null;
       th += '<th>' + c.n + '회차<small>' + esc(c.d.slice(2).replace(/-/g, ".")) + '</small></th>';
@@ -557,15 +558,16 @@
       if(p == null){ px += '<td>—<small>편입 전</small></td>'; rr += '<td>—</td>'; sc += '<td>—</td>'; return; }
       if(w && w.f) fill = true;
       if(w && w.b === "now") now = true;
+      if(w && w.b === "rec") rec = true;
       var d = (prev && p) ? (p / prev - 1) * 100 : null;
       px += '<td>' + fmtPx(p, s.c) + (w && w.f ? '*' : '') + (d == null ? '' : '<small class="' + (d >= 0 ? "up" : "dn") + '">' + (d >= 0 ? "+" : "") + d.toFixed(1) + '%</small>') + '</td>';
       var r = w ? w.r : v[1], st = w ? w.st : v[2];
       rr += '<td class="' + esc(st || "") + '">' + (r == null ? "—" : fmtR({r: r, st: st})) + (w && w.b === "now" ? '†' : '')
         + '<small>' + esc(LB[st] || st || "") + '</small>'
         + (w && v ? '<small>기록 ' + (v[1] == null ? "—" : fmtR({r: v[1], st: v[2]})) + '</small>' : '') + '</td>';
-      if(w && w.b === "now") sc += '<td><span style="font-family:inherit;color:var(--muted)">확인 불가</span><small>그때 재무 없음</small>';
+      if(w && w.b === "now") sc += '<td><span style="font-family:inherit;color:var(--muted)">확인 불가</span><small>' + esc(w.why || "그때 재무 없음") + '</small>';
       else { var q = w ? w.q : v[3], n = w ? w.n : v[4];
-        sc += '<td>' + (q == null ? "—" : q.toFixed(2)) + '<small>순점 ' + sg(n) + '</small>'; }
+        sc += '<td>' + (q == null ? "—" : q.toFixed(2)) + (w && w.b === "rec" ? '‡' : '') + '<small>순점 ' + sg(n) + '</small>'; }
       sc += (w && v ? '<small>기록 ' + (v[3] == null ? "—" : v[3].toFixed(2)) + ' · ' + sg(v[4]) + '</small>' : '') + '</td>';
       prev = p;
     });
@@ -574,7 +576,8 @@
         ? '큰 숫자 = <b>지금 규칙</b>으로 그 회차 가격을 다시 잰 값 · 작은 <b>기록</b> = 스냅샷에 남은 그때 규칙의 값'
         : '스냅샷에 남은 그때 규칙의 값')
       + ' · 가격 밑 %는 직전 회차 대비 · 점수는 체크리스트 평균(/5)'
-      + (now ? ' · <b>†</b> 그 회차 재무가 없어 지금 시작가로 낸 비율(점수는 확인 불가)' : '')
+      + (rec ? ' · <b>‡</b> 그 회차 원자료는 없지만 지금 재무가 그때와 같다고 확인돼(시작가 입력값 일치 · 그 뒤 실적 발표 없음) 재구성한 값' : '')
+      + (now ? ' · <b>†</b> 그때 재무를 확인 못 해(실적 발표 등) 지금 시작가로 낸 비율 — 점수는 확인 불가' : '')
       + (fill ? ' · <b>*</b> 편입 전이라 그날 종가로 보충(스냅샷 아님)' : '') + '</div>';
   }
   document.addEventListener("toggle", function(e){
