@@ -82,7 +82,7 @@
   .row2{display:flex;gap:8px;padding:8px 14px 0}
   .row2 input,.row2 select{flex:1;min-width:0;font-family:inherit;font-size:13px;
     padding:7px 10px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px}
-  .row2 select{flex:0 0 108px}
+  .row2 select{flex:0 0 132px}
 
   /* ── 내 투자 ───────────────────────────── */
   .hsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
@@ -155,7 +155,20 @@
   .c[data-st="band"]{border-left-color:var(--band)}
   .c[data-st="over"]{border-left-color:var(--over)}
   .c[data-st="floor"]{border-left-color:var(--accent)}
-  .c-h{display:flex;align-items:baseline;gap:10px}
+  .c-h{display:flex;align-items:baseline;gap:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  /* 접힌 카드(사용자 2026-11-16 "파란 부분만 보이고 누르면 저만큼 뜨게") — 머리(이름·비율·점수)만 보이고 누르면 펼친다.
+     펼친 안의 체크리스트·스냅샷·10가지 잣대·AI·근거는 각각 따로 펼친다 */
+  .c{padding-bottom:11px}
+  .c .c-x{display:none}
+  .c.open .c-x{display:block}
+  .c.open{padding-bottom:9px}
+  .c-h .id .mk{display:block;font-size:11px;color:var(--accent);font-weight:600;margin-top:2px;letter-spacing:0}
+  .c-h .id .mk.na{color:var(--muted);font-weight:400}
+  .c-h .id .hd{font-size:10px;padding:1px 6px;border-radius:999px;background:var(--accent);color:#fff;font-weight:600;margin-left:6px;vertical-align:2px}
+  .c-h .chev{flex:none;align-self:center;color:var(--muted);font-size:12px;transition:transform .15s;margin-left:-2px}
+  .c.open .c-h .chev{transform:rotate(180deg)}
+  .mtt td.hi{color:var(--under);font-weight:600} .mtt td.lo{color:var(--over)}
+  .mtt td:first-child small{display:block;font-size:10.5px;color:var(--muted);white-space:normal;max-width:20ch}
   .c-h .id{flex:1;min-width:0}
   .c-h .id b{font-size:15.5px;font-weight:600;letter-spacing:-.01em}
   .c-h .id em{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:6px}
@@ -327,6 +340,7 @@
           <option value="r">비율순</option>
           <option value="net">점수순</option>
           <option value="t">티커순</option>
+          <optgroup label="10가지 잣대 (싼 쪽부터)" id="sortM"></optgroup>
         </select>
       </div>
       <div id="ruleBan"><span id="ruleBanTxt"></span><button type="button" id="ruleBanX">해제 ×</button></div>
@@ -396,12 +410,14 @@
 (function(){
   "use strict";
   var D = null, filt = "all", sortBy = "r", q = "", ruleFilt = null, RMAP = {};
+  // 내 종목 — 보유는 암호문이라 '내 투자'에서 잠금을 푼 뒤에야 안다(공개 앱이다). 펼친 카드는 다시 그려도 펼친 채로 둔다
+  var HELD = null, OPEN = {};
 
   var LB = {under:"저평가 후보", band:"밴드 하단 부근", over:"고평가 신호",
             floor:"Floor 대비", nodata:"시작가 미수집", norule:"규칙 미적용",
             blocked:"산출 보류", none:"시작가 미수집"};
   var CHIPS = [{k:"all",l:"전체"},{k:"both",l:"두 축 통과"},{k:"under",l:"저평가"},{k:"q30",l:"점수 3.0↑"},
-               {k:"aihi",l:"AI 대체 높음"},{k:"band",l:"밴드"},{k:"over",l:"고평가"},{k:"floor",l:"Floor"},{k:"na",l:"미산출"}];
+               {k:"mine",l:"내 종목"},{k:"aihi",l:"AI 대체 높음"},{k:"band",l:"밴드"},{k:"over",l:"고평가"},{k:"floor",l:"Floor"},{k:"na",l:"미산출"}];
   var NA = {nodata:1, norule:1, blocked:1, none:1};
 
   function esc(s){ return String(s == null ? "" : s)
@@ -446,21 +462,57 @@
     // 원장(checklist.py)과 같은 조건 — 비율 1 미만 · 점수 3.0 이상 · 밴드 폭 경고 없음(관문 G5)
     if(filt === "both") return both(s);
     if(filt === "aihi") return !!(s.ai && s.ai.a && s.ai.a.g === "높음");
+    if(filt === "mine") return !!(HELD && HELD[s.t]);
     return s.st === filt;
+  }
+
+  // 10가지 잣대(tools/methods_now.py) — 0~1 백분위, 1 = 그 잣대로 원장 개별주 중 가장 싸다. cols[0] 이 오늘, 나머지가 회차
+  function mIdx(k){ if(!D.mth) return -1; for(var i = 0; i < D.mth.labels.length; i++) if(D.mth.labels[i].k === k) return i; return -1; }
+  function mVal(t, k, col){ var i = mIdx(k), M = D.mth && D.mth.t[t]; if(i < 0 || !M || !M[col || 0]) return null; var v = M[col || 0][i]; return v == null ? null : v; }
+  function mRank(t, k){
+    var v = mVal(t, k); if(v == null) return null;
+    var all = D.stocks.map(function(x){ return mVal(x.t, k); }).filter(function(x){ return x != null; });
+    return {r: all.filter(function(x){ return x > v; }).length + 1, n: all.length};
+  }
+  function mLabel(k){ var i = mIdx(k); return i < 0 ? k : D.mth.labels[i].lb; }
+  function mBody(t){
+    var M = D.mth, V = M && M.t[t];
+    if(!V) return '<div class="snn">ETF·시세 부족 종목은 재무 잣대가 서지 않아 점수가 없다.</div>';
+    var th = '<tr><th></th>' + M.cols.map(function(c, j){
+      return '<th>' + (j ? c.n + '회차' : '오늘') + '<small>' + esc((c.px || "").slice(2).replace(/-/g, ".")) + '</small></th>'; }).join("") + '</tr>';
+    var body = M.labels.map(function(L, i){
+      return '<tr><td>' + esc(L.lb) + '<small>' + esc(L.desc || "") + '</small></td>' + M.cols.map(function(c, j){
+        var v = V[j] ? V[j][i] : null;
+        if(v == null) return '<td>—</td>';
+        var p = Math.round(v * 100);
+        return '<td class="' + (p >= 70 ? "hi" : p <= 30 ? "lo" : "") + '">' + p + (j === 0 && mRank(t, L.k) ? '<small>' + mRank(t, L.k).r + '/' + mRank(t, L.k).n + '위</small>' : '') + '</td>';
+      }).join("") + '</tr>';
+    }).join("");
+    return '<div class="snw"><table class="snt mtt">' + th + body + '</table></div>'
+      + '<div class="snn">숫자 = 원장 개별주 안에서의 백분위(100 에 가까울수록 그 잣대로 <b>싸다·매수 쪽</b>, 70↑ 초록 · 30↓ 빨강). '
+      + '오늘 칸 밑은 등수. 회차 칸은 <b>그때 가격 · 그때까지 공시된 재무</b>로 다시 잰 값이라(스냅샷 아님) 편입 전 회차도 있다. '
+      + '원장 안의 순위라 종목 구성이 바뀌면 같은 날 값도 바뀐다.</div>';
   }
 
   var SVL = {under:"저평가", mixed:"혼재", over:"고평가", fair:"적정", risk:"관문 탈락",
              hold:"보류", nodata:"미수집", blocked:"보류"};
   function card(s){
     var na = !!NA[s.st];
-    var h = '<article class="c" data-st="' + esc(s.st) + '">'
-      + '<div class="c-h"><div class="id"><b>' + esc(s.n) + '</b><em>' + esc(s.t) + '</em></div>'
+    var mk = "";
+    if(sortBy.charAt(0) === "m" && D.mth){
+      var mr = mRank(s.t, sortBy);
+      mk = mr ? '<span class="mk">' + esc(mLabel(sortBy)) + ' ' + Math.round(mVal(s.t, sortBy) * 100) + ' · ' + mr.r + '/' + mr.n + '위</span>'
+              : '<span class="mk na">' + esc(mLabel(sortBy)) + ' 점수 없음</span>';
+    }
+    var h = '<article class="c' + (OPEN[s.t] ? ' open' : '') + '" data-st="' + esc(s.st) + '" data-t="' + esc(s.t) + '">'
+      + '<div class="c-h" role="button" tabindex="0" aria-expanded="' + !!OPEN[s.t] + '"><div class="id"><b>' + esc(s.n) + '</b><em>' + esc(s.t) + '</em>'
+      + (HELD && HELD[s.t] ? '<span class="hd">보유</span>' : '') + mk + '</div>'
       + '<div class="r"><span class="v num">' + fmtR(s) + '</span><i>'
       + (s.st === "floor" ? "Floor 대비" : "비율") + '</i></div>'
       // 질 점수 = 체크리스트 평균(127문항 · 5점). 가격(비율)과 나란히 놓는 두 번째 큰 숫자다
       + '<div class="q ' + grade(s).c + '"><span class="v num">' + (s.cl ? s.cl.avg.toFixed(2) : "—")
-      + (s.cl ? '<small>/5</small>' : '') + '</span><i>점수</i></div></div>'
-      + '<div class="c-b">'
+      + (s.cl ? '<small>/5</small>' : '') + '</span><i>점수</i></div><span class="chev" aria-hidden="true">▾</span></div>'
+      + '<div class="c-x"><div class="c-b">'
       + '<div><i>현재</i><span>' + fmtPx(s.px, s.c) + '</span></div>'
       + '<div><i>' + (s.st === "floor" ? "순현금 Floor" : "시작가") + '</i><span>' + fmtPx(s.sp, s.c) + '</span></div>'
       // 순점은 2026-09-26 에 체크리스트 N 카테고리로 합쳤다 — 따로 보여주지 않는다
@@ -496,6 +548,11 @@
     var nC = D.snap ? D.snap.cyc.filter(function(c, i){ return (SN && SN[i]) || (SW && SW[i]); }).length : 0;
     if(nC)
       h += '<details class="snx" data-t="' + esc(s.t) + '"><summary>스냅샷 · ' + nC + '회차</summary><div class="snb"></div></details>';
+    // 10가지 잣대 — 오늘과 회차마다(사용자 요청 2026-11-16). 펼칠 때 그린다
+    if(D.mth && D.mth.t[s.t]){
+      var m10 = mVal(s.t, "m10");
+      h += '<details class="mtx" data-t="' + esc(s.t) + '"><summary>10가지 잣대' + (m10 != null ? ' · 앙상블 ' + Math.round(m10 * 100) : '') + '</summary><div class="mtb"></div></details>';
+    }
     if(X && (X.a || X.b != null)){
       h += '<details><summary>AI 노출' + (X.a && X.a.g ? ' · 대체 ' + esc(X.a.g) : '') + '</summary><div class="ais">';
       if(X.a){
@@ -524,7 +581,7 @@
       if(s.warn) h += '<div class="warn">' + rich(s.warn) + '</div>';
       h += '</details>';
     }
-    return h + '</article>';
+    return h + '</div></article>';
   }
 
   function clBody(t){
@@ -583,6 +640,11 @@
   document.addEventListener("toggle", function(e){
     var d = e.target;
     if(!d.classList || !d.open) return;
+    if(d.classList.contains("mtx")){
+      var m = d.querySelector(".mtb");
+      if(m && !m.innerHTML) m.innerHTML = mBody(d.getAttribute("data-t"));
+      return;
+    }
     if(d.classList.contains("snx")){
       var n = d.querySelector(".snb");
       if(n && !n.innerHTML) n.innerHTML = snBody(d.getAttribute("data-t"));
@@ -597,6 +659,12 @@
     var rows = D.stocks.filter(pass);
     if(sortBy === "net") rows.sort(function(a,b){ return (b.cl ? b.cl.avg : -99) - (a.cl ? a.cl.avg : -99); });
     else if(sortBy === "t") rows.sort(function(a,b){ return a.t < b.t ? -1 : 1; });
+    // 잣대 — 오늘 점수가 높은(싼) 것부터. 점수가 없는 종목(ETF 등)은 뒤로, 그 안에서는 비율순
+    else if(sortBy.charAt(0) === "m") rows.sort(function(a,b){
+      var x = mVal(a.t, sortBy), y = mVal(b.t, sortBy);
+      if(x == null && y == null) return (a.r == null ? 9e9 : a.r) - (b.r == null ? 9e9 : b.r);
+      if(x == null) return 1; if(y == null) return -1; return y - x;
+    });
     else rows.sort(function(a,b){
       // Floor 비율은 다른 규칙의 비율과 뜻이 달라 같은 줄에 세우지 않는다 — 뒤로 뺀다.
       // 미산출은 그보다 더 뒤. 무한대를 쓰면 둘이 뺄셈에서 NaN 이 되어 순서가 흐트러진다.
@@ -605,21 +673,23 @@
     });
     document.getElementById("list").innerHTML = rows.length
       ? rows.map(card).join("")
-      : '<p class="empty">해당하는 종목이 없다.</p>';
+      : (filt === "mine" && !HELD ? '<p class="empty">내 종목은 <b>내 투자</b> 탭에서 잠금을 풀면 보인다(보유는 암호화돼 있다).</p>'
+                                  : '<p class="empty">해당하는 종목이 없다.</p>');
   }
 
   function chips(){
-    var n = {all:D.stocks.length, na:0, q30:0, both:0};
+    var n = {all:D.stocks.length, na:0, q30:0, both:0, mine:0};
     var Qf = D.qual ? D.qual.focus : 3.0;
     D.stocks.forEach(function(s){
       if(NA[s.st]) n.na++; else n[s.st] = (n[s.st] || 0) + 1;
       if(s.cl && s.cl.avg >= Qf) n.q30++;
       if(both(s)) n.both++;
+      if(HELD && HELD[s.t]) n.mine++;
       if(s.ai && s.ai.a && s.ai.a.g === "높음") n.aihi = (n.aihi || 0) + 1;
     });
     document.getElementById("chips").innerHTML = CHIPS.map(function(c){
       return '<button data-f="' + c.k + '" aria-pressed="' + (c.k === filt) + '">'
-        + c.l + '<span class="n">' + (n[c.k] || 0) + '</span></button>';
+        + c.l + '<span class="n">' + (c.k === "mine" && !HELD ? "🔒" : (n[c.k] || 0)) + '</span></button>';
     }).join("");
   }
 
@@ -835,6 +905,9 @@
     document.getElementById("cnt").textContent = D.count == null ? D.stocks.length : D.count;
     RMAP = {};
     (D.rules || []).forEach(function(r){ RMAP[r.id] = r; });
+    var og = document.getElementById("sortM");
+    if(og) og.innerHTML = D.mth ? D.mth.labels.map(function(L){ return '<option value="' + esc(L.k) + '">' + esc(L.lb) + '</option>'; }).join("") : "";
+    if(sortBy.charAt(0) === "m" && !D.mth) sortBy = "r";
     chips(); render(); renderRules(); renderAiRule(); renderCal(); renderMkt(); renderCheck(); renderHold();
   }
 
@@ -933,6 +1006,7 @@
   function failBump(){ var f = failState(); f.n++; if(f.n >= 5) f.until = Date.now() + 30000 * Math.pow(2, Math.min(f.n - 5, 6)); lsSet(FAIL_LS, JSON.stringify(f)); return f; }
   function lockNow(){
     UNLOCKED = null; HV = null; clearTimeout(idleT);
+    if(HELD){ HELD = null; if(filt === "mine") filt = "all"; chips(); render(); }
     document.getElementById("holdSum").innerHTML = "";
     document.getElementById("holdList").innerHTML = "";
     document.getElementById("holdNote").hidden = true;
@@ -1098,6 +1172,9 @@
   }
   function drawHold(P, src, warn){
     document.getElementById("holdNote").hidden = false;
+    // 워치 탭의 '내 종목' — 수량이 있는 티커만. 잠그면 lockNow 가 지운다
+    HELD = {}; Object.keys(P.items || {}).forEach(function(t){ if((P.items[t] || {}).shares > 0) HELD[t] = 1; });
+    chips(); render();
     document.getElementById("holdAsof").textContent = stampOf(P.pulledAt);
     // 환율 — 실계좌 파일에 fx(1단위당 원)가 있으면 그것, 없으면 시장 지표
     var M = D.mktidx || {}, PF = P.fx || {};
@@ -1237,6 +1314,18 @@
   });
   document.getElementById("q").addEventListener("input", function(){
     q = this.value.trim().toLowerCase(); render();
+  });
+  // 카드 머리를 누르면 펼치고 접는다(안의 규칙 꼬리표·펼침 칸은 각자 처리)
+  function toggleCard(hd){
+    var c = hd.closest(".c"), t = c.getAttribute("data-t");
+    OPEN[t] = !OPEN[t]; c.classList.toggle("open", !!OPEN[t]); hd.setAttribute("aria-expanded", !!OPEN[t]);
+  }
+  document.getElementById("list").addEventListener("click", function(e){
+    var hd = e.target.closest(".c-h"); if(hd) toggleCard(hd);
+  });
+  document.getElementById("list").addEventListener("keydown", function(e){
+    if(e.key !== "Enter" && e.key !== " ") return;
+    var hd = e.target.closest(".c-h"); if(hd){ e.preventDefault(); toggleCard(hd); }
   });
   document.getElementById("sort").addEventListener("change", function(){
     sortBy = this.value; render();
