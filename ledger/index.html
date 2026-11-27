@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f7d4f">
+<meta name="robots" content="noindex,nofollow">
+<title>여유자금 가계부</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* 레이아웃: 폰 한 줄 세로 흐름. 잠금·월초 확인은 화면 전체를 덮는 한 장 */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --line:#dfe4dd; --fg:#1d2621; --muted:#66736b;
+  --income:#2f6f8f; --fixed:#b5562f; --invest:#5a55a6; --free:#2f7d4f; --warn:#b5562f;
+  --track:#e7ebe5; --on-accent:#ffffff;
+  --font:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#121714; --surface:#1a211d; --line:#2b3530; --fg:#e4ebe6; --muted:#93a19a;
+  --income:#6fb0cf; --fixed:#e08a63; --invest:#a09cf0; --free:#6cc28f; --warn:#e08a63;
+  --track:#25302a; --on-accent:#0f1612; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.5;
+  padding-top:calc(env(safe-area-inset-top,0px) + 18px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 40px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.num{font-variant-numeric:tabular-nums}
+h1{font-size:1.15rem;margin:0;font-weight:700}
+h2{font-size:1rem;margin:0;font-weight:600}
+.sub{color:var(--muted);font-size:.82rem}
+button{font:inherit;color:inherit;cursor:pointer}
+input,textarea{font:inherit;font-size:16px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%}
+:focus-visible{outline:2px solid var(--free);outline-offset:2px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:11px 16px}
+.btn.primary{background:var(--free);border-color:var(--free);color:var(--on-accent);font-weight:600}
+.btn.primary:disabled{opacity:.45}
+.btn.link{border:0;background:none;color:var(--muted);text-decoration:underline;padding:6px}
+.err{color:var(--warn);font-size:.88rem;min-height:1.3em}
+
+/* 잠금·월초 확인 — 화면 전체 */
+.gate{min-height:calc(100vh - 80px);display:flex;flex-direction:column;justify-content:center;gap:16px;max-width:420px;margin:0 auto}
+.gate .mark{width:52px;height:52px;border-radius:14px;background:var(--free);display:grid;place-items:center}
+.gate .mark svg{width:28px;height:28px}
+.gate h1{font-size:1.4rem}
+.gate form{display:flex;flex-direction:column;gap:10px}
+.bio{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;font-weight:600}
+.bio svg{width:22px;height:22px}
+
+.check{display:flex;flex-direction:column;gap:14px;max-width:560px;margin:0 auto}
+.check .head{display:flex;flex-direction:column;gap:6px}
+.check .head h1{font-size:1.3rem}
+.prog{height:6px;background:var(--track);border-radius:3px;overflow:hidden}
+.prog span{display:block;height:100%;background:var(--free);transition:width .2s}
+.crow{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center}
+.crow.done{border-color:var(--free)}
+.crow.none{opacity:.7}
+.crow .nm{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.crow .gp{font-size:.75rem;color:var(--muted)}
+.crow .amt{grid-column:1/-1;display:flex;gap:8px;align-items:center}
+.crow .amt input{flex:1;min-width:0}
+.crow .acts{grid-column:1/-1;display:flex;gap:8px}
+.crow .acts button{flex:1;padding:9px}
+.crow .acts .on{background:var(--free);border-color:var(--free);color:var(--on-accent);font-weight:600}
+.crow .acts .on.no{background:var(--muted);border-color:var(--muted)}
+.sticky{position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+
+/* 본 화면 */
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 18px;display:flex;flex-direction:column;gap:14px}
+.hero .big{font-size:2.1rem;font-weight:700;color:var(--free);line-height:1.1}
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--track)}
+.stack span{display:block;height:100%}
+.eq{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:baseline;font-size:.92rem}
+.eq .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.eq .v{text-align:right}
+.eq .tot{border-top:1px solid var(--line);padding-top:8px;font-weight:600}
+.group{display:flex;flex-direction:column;gap:8px}
+.ghead{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px 14px}
+.row:first-child{border-top:0}
+.row .bar{width:4px;align-self:stretch;border-radius:2px}
+.row .main{flex:1;min-width:0}
+.row .name{font-weight:500}
+.row .note{color:var(--muted);font-size:.8rem;overflow-wrap:anywhere}
+.row .amt{font-weight:600;white-space:nowrap}
+.add{background:none;border:1px dashed var(--line);border-radius:10px;padding:10px;color:var(--muted);font-size:.9rem}
+.editor{border-top:1px solid var(--line);padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;background:var(--bg)}
+.editor label{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted)}
+.editor .full{grid-column:1/-1}
+.editor .eacts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.editor .danger{color:var(--warn);margin-right:auto}
+.months{display:flex;flex-direction:column;gap:10px}
+.month{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.mtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.chip{font-size:.75rem;border-radius:999px;padding:2px 8px;border:1px solid currentColor;white-space:nowrap}
+.chip.over{color:var(--warn)} .chip.ok{color:var(--free)} .chip.part{color:var(--muted)}
+.mbar{position:relative;height:10px;background:var(--track);border-radius:5px}
+.mbar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--free)}
+.mbar .fill.over{background:var(--warn)}
+.mbar .cap{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--fg);opacity:.55}
+.mline{display:flex;justify-content:space-between;gap:10px;font-size:.85rem;color:var(--muted);flex-wrap:wrap}
+details{font-size:.85rem}
+details summary{cursor:pointer;color:var(--muted);list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"＋ "}
+details[open] summary::before{content:"－ "}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin-top:8px}
+.kv .h{grid-column:1/-1;color:var(--muted);font-size:.78rem;margin-top:6px}
+.foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:.88rem;max-width:calc(100% - 32px);z-index:5}
+.sheet{display:flex;flex-direction:column;gap:10px}
+textarea{min-height:110px;font-size:13px;font-family:ui-monospace,monospace}
+/* 기록(월간·연간) */
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--track);border-radius:10px;padding:3px;gap:3px}
+.seg button{border:0;background:none;border-radius:8px;padding:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pager b{font-size:1.05rem}
+.pager button{border:1px solid var(--line);background:var(--surface);border-radius:10px;width:40px;height:36px;font-size:1.1rem}
+.pager button:disabled{opacity:.3}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile .t{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.tile .t .dot{width:8px;height:8px;border-radius:50%}
+.tile .v{font-size:1.1rem;font-weight:700;overflow-wrap:anywhere}
+.tile .v.neg{color:var(--warn)}
+.yrow{display:flex;flex-direction:column;gap:6px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.yrow .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ybar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--track)}
+.ybar span{display:block;height:100%}
+.ytxt{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:.8rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+// ── 저장 위치(같은 출처의 주식 앱과 겹치지 않게 ledger- 접두) ──
+var LOCK_LS = "ledger-lock", STORE_LS = "ledger-store", FAIL_LS = "ledger-fail", PEND_SS = "ledger-pend";
+var PBKDF2_ITER = 310000, IDLE_MS = 5 * 60 * 1000;
+var ENV = null;        // book.json (암호문)
+var KEY = null;        // 풀린 데이터 열쇠(base64url) — 메모리에만
+var BASE = null;       // 풀린 book.json 내용
+var STORE = null;      // 폰에서 입력한 것 {edits:{id:{...}|{deleted:true}}, confirms:{ "YYYY-MM": {at, rows:{id:{amount,none}}} }}
+var idleT = null, editing = null, CHECK = null;
+
+var GROUPS = {income:{title:"고정 수입", color:"var(--income)"}, fixed:{title:"고정 지출", color:"var(--fixed)"}, invest:{title:"고정 재테크", color:"var(--invest)"}};
+var FP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 11v3a6 6 0 0 1-1.2 3.6"/><path d="M8.5 9.5A4 4 0 0 1 16 11v2.5"/><path d="M6 12a6 6 0 0 1 11.5-2.4"/><path d="M4.5 8A8.5 8.5 0 0 1 19 7"/><path d="M15.5 16.5c-.3 1.2-.8 2.3-1.5 3.3"/><path d="M8 14.5c0 1.6-.4 3-1.2 4.2"/></svg>';
+
+// ── 도구 ──
+function $(id){ return document.getElementById(id); }
+function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+function won(n){ return Math.round(n).toLocaleString("ko-KR") + "원"; }
+function man(n){ return (Math.round(n / 1000) / 10).toLocaleString("ko-KR") + "만"; }
+function toast(t){ var e = $("toast"); e.textContent = t; e.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(function(){ e.hidden = true; }, 2800); }
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k, v){ try { if(v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch(e){} }
+function b64u(s){ s = s.replace(/-/g, "+").replace(/_/g, "/"); while(s.length % 4) s += "="; return Uint8Array.from(atob(s), function(c){ return c.charCodeAt(0); }); }
+function e64(u8){ var s = ""; for(var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s); }
+function rnd(n){ return crypto.getRandomValues(new Uint8Array(n)); }
+function ym(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); }
+function prevYm(s){ var p = s.split("-").map(Number); return ym(new Date(p[0], p[1] - 2, 1)); }
+function nextYm(s){ var p = s.split("-").map(Number); return ym(new Date(p[0], p[1], 1)); }
+function ymLabel(s){ var p = s.split("-"); return p[0] + "년 " + Number(p[1]) + "월"; }
+function lockRec(){ try { return JSON.parse(lsGet(LOCK_LS) || "null"); } catch(e){ return null; } }
+
+// ── 암호 ──
+function aesKey(raw, use){ return crypto.subtle.importKey("raw", raw, "AES-GCM", false, use); }
+function openEnv(env, k){
+  return aesKey(b64u(k), ["decrypt"]).then(function(key){ return crypto.subtle.decrypt({name:"AES-GCM", iv:b64u(env.iv)}, key, b64u(env.ct)); })
+    .then(function(buf){ return JSON.parse(new TextDecoder().decode(buf)); });
+}
+function sealWith(k, obj){
+  var iv = rnd(12);
+  return aesKey(b64u(k), ["encrypt"]).then(function(key){ return crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, key, new TextEncoder().encode(JSON.stringify(obj))); })
+    .then(function(ct){ return {v:1, alg:"AES-GCM", iv:e64(iv), ct:e64(new Uint8Array(ct)), kid:ENV && ENV.kid}; });
+}
+function pinKey(pin, salt, iter){
+  return crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveKey"]).then(function(k){
+    return crypto.subtle.deriveKey({name:"PBKDF2", salt:salt, iterations:iter, hash:"SHA-256"}, k, {name:"AES-GCM", length:256}, false, ["encrypt", "decrypt"]); });
+}
+function prfKey(secret){
+  return crypto.subtle.importKey("raw", secret, "HKDF", false, ["deriveKey"]).then(function(k){
+    return crypto.subtle.deriveKey({name:"HKDF", hash:"SHA-256", salt:new Uint8Array(0), info:new TextEncoder().encode("ledger-app key v1")},
+      k, {name:"AES-GCM", length:256}, false, ["encrypt", "decrypt"]); });
+}
+function wrapK(wk, s){ var iv = rnd(12);
+  return crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, wk, new TextEncoder().encode(s)).then(function(ct){ return {iv:e64(iv), ct:e64(new Uint8Array(ct))}; }); }
+function unwrapK(wk, w){ return crypto.subtle.decrypt({name:"AES-GCM", iv:b64u(w.iv)}, wk, b64u(w.ct)).then(function(b){ return new TextDecoder().decode(b); }); }
+
+// 지문 — WebAuthn PRF 로 기기 생체 인증이 내주는 비밀값에서 열쇠 감싸개를 만든다.
+// 통과 여부만 보는 문이 아니라 실제로 열쇠를 푸는 쪽이다. PRF 를 못 주면 지문은 켜지 않는다.
+function bioGet(credId, salt){
+  return navigator.credentials.get({publicKey:{challenge:rnd(32), allowCredentials:[{type:"public-key", id:credId}],
+    userVerification:"required", timeout:60000, extensions:{prf:{eval:{first:salt}}}}}).then(function(a){
+    var r = a.getClientExtensionResults ? a.getClientExtensionResults() : {};
+    if(!r.prf || !r.prf.results || !r.prf.results.first) throw new Error("noprf");
+    return r.prf.results.first;
+  });
+}
+function bioRegister(){
+  var salt = rnd(32);
+  return navigator.credentials.create({publicKey:{
+    rp:{name:"여유자금 가계부"}, user:{id:rnd(16), name:"ledger", displayName:"가계부"},
+    challenge:rnd(32), pubKeyCredParams:[{type:"public-key", alg:-7}, {type:"public-key", alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:"platform", userVerification:"required", residentKey:"preferred"},
+    timeout:60000, extensions:{prf:{eval:{first:salt}}}}}).then(function(cred){
+    var ext = cred.getClientExtensionResults ? cred.getClientExtensionResults() : {};
+    if(!ext.prf || ext.prf.enabled === false) throw new Error("noprf");
+    var id = new Uint8Array(cred.rawId), first = ext.prf.results && ext.prf.results.first;
+    return (first ? Promise.resolve(first) : bioGet(id, salt)).then(prfKey).then(function(wk){ return wrapK(wk, KEY); }).then(function(w){
+      var rec = lockRec(); rec.bio = {id:e64(id), salt:e64(salt), w:w}; lsSet(LOCK_LS, JSON.stringify(rec)); });
+  });
+}
+// 비밀번호 틀림 — 5번부터 30초·60초·120초… 기다리게 한다
+function failState(){ try { return JSON.parse(lsGet(FAIL_LS) || '{"n":0,"until":0}'); } catch(e){ return {n:0, until:0}; } }
+function failBump(){ var f = failState(); f.n++; if(f.n >= 5) f.until = Date.now() + 30000 * Math.pow(2, Math.min(f.n - 5, 6)); lsSet(FAIL_LS, JSON.stringify(f)); return f; }
+
+// ── 잠금 ──
+function lockNow(){ KEY = null; BASE = null; STORE = null; editing = null; CHECK = null; clearTimeout(idleT); route(); }
+function touchIdle(){ if(!KEY) return; clearTimeout(idleT); idleT = setTimeout(lockNow, IDLE_MS); }
+document.addEventListener("visibilitychange", function(){ if(document.hidden && KEY) lockNow(); });
+["click", "touchstart", "keydown", "scroll"].forEach(function(ev){ document.addEventListener(ev, touchIdle, {passive:true}); });
+
+(function takeKey(){
+  var m = /[#&]k=([A-Za-z0-9_-]{40,})/.exec(location.hash || "");
+  if(!m) return;
+  try { sessionStorage.setItem(PEND_SS, m[1]); } catch(e){}
+  try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
+})();
+function pendKey(){ try { return sessionStorage.getItem(PEND_SS); } catch(e){ return null; } }
+
+function gate(title, sub){
+  var g = el("section", "gate");
+  var mk = el("div", "mark"); mk.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><path d="M16 14.5h2"/><path d="M7 6V4.8A1.8 1.8 0 0 1 8.8 3h6.4A1.8 1.8 0 0 1 17 4.8V6"/></svg>';
+  g.append(mk, el("h1", null, title));
+  if(sub) g.append(el("p", "sub", sub));
+  return g;
+}
+function pinInput(id, ph){ var i = el("input"); i.id = id; i.type = "password"; i.inputMode = "numeric"; i.pattern = "[0-9]*"; i.autocomplete = "off"; i.placeholder = ph; return i; }
+function mount(node){ var a = $("app"); a.replaceChildren(node); window.scrollTo(0, 0); }
+
+function viewKey(){
+  var g = gate("여유자금 가계부", "처음 한 번만 열쇠를 넣습니다. 열쇠는 Claude 대화에서 받은 43자 문자열입니다.");
+  var f = el("form"); var i = el("input"); i.id = "keyIn"; i.type = "password"; i.autocomplete = "off"; i.autocapitalize = "off"; i.spellcheck = false; i.placeholder = "열쇠(또는 #k= 붙은 주소) 붙여넣기";
+  var b = el("button", "btn primary", "다음"); var err = el("div", "err");
+  f.append(i, b, err); g.append(f);
+  f.onsubmit = function(e){ e.preventDefault();
+    var v = i.value.replace(/\s+/g, ""), m = /k=([A-Za-z0-9_-]+)/.exec(v); if(m) v = m[1];
+    if(!/^[A-Za-z0-9_-]{40,}$/.test(v)){ err.textContent = "열쇠 모양이 아닙니다. 43자 한 줄을 그대로 붙여 주세요."; return; }
+    openEnv(ENV, v).then(function(){ try { sessionStorage.setItem(PEND_SS, v); } catch(x){} route(); })
+      .catch(function(){ err.textContent = "이 열쇠로는 열리지 않습니다. 한 글자라도 빠지지 않았는지 봐 주세요."; });
+  };
+  mount(g);
+}
+function viewSetPin(){
+  var g = gate("비밀번호 정하기", "앱을 열 때 쓸 숫자 6자리 이상을 정해 주세요. 다음 화면에서 지문도 켤 수 있습니다.");
+  var f = el("form"); var p1 = pinInput("pin1", "비밀번호(숫자 6자리 이상)"), p2 = pinInput("pin2", "한 번 더");
+  var b = el("button", "btn primary", "잠금 만들기"), err = el("div", "err");
+  f.append(p1, p2, b, err); g.append(f);
+  f.onsubmit = function(e){ e.preventDefault();
+    if(!/^[0-9]{6,}$/.test(p1.value)){ err.textContent = "숫자 6자리 이상으로 정해 주세요."; return; }
+    if(p1.value !== p2.value){ err.textContent = "두 번 넣은 비밀번호가 다릅니다."; return; }
+    var k = pendKey(); if(!k) return route();
+    var salt = rnd(16); b.disabled = true;
+    pinKey(p1.value, salt, PBKDF2_ITER).then(function(wk){ return wrapK(wk, k); }).then(function(w){
+      lsSet(LOCK_LS, JSON.stringify({v:1, salt:e64(salt), iter:PBKDF2_ITER, w:w, kid:ENV.kid}));
+      try { sessionStorage.removeItem(PEND_SS); } catch(x){}
+      return unlocked(k, true);
+    });
+  };
+  mount(g);
+}
+function viewBioOffer(){
+  var g = gate("지문으로 열까요?", "켜 두면 다음부터 지문만으로 열립니다. 비밀번호는 지문이 안 될 때 씁니다.");
+  var on = el("button", "btn primary bio"); on.innerHTML = FP + "<span>지문 켜기</span>";
+  var skip = el("button", "btn link", "나중에"); var err = el("div", "err");
+  on.onclick = function(){ on.disabled = true;
+    bioRegister().then(function(){ toast("지문을 켰습니다"); afterUnlock(); })
+      .catch(function(e){ on.disabled = false;
+        err.textContent = e && e.message === "noprf" ? "이 브라우저는 지문으로 열쇠를 지키는 기능(PRF)을 지원하지 않습니다. Chrome 으로 열어 보거나 비밀번호만 쓰세요." : "지문 등록이 취소됐거나 실패했습니다."; });
+  };
+  skip.onclick = afterUnlock;
+  g.append(on, skip, err); mount(g);
+}
+function viewUnlock(rec){
+  var g = gate("여유자금 가계부", null);
+  var err = el("div", "err");
+  if(rec.bio){
+    var b = el("button", "btn primary bio"); b.innerHTML = FP + "<span>지문으로 열기</span>";
+    b.onclick = function(){ bioOpen(rec, err); }; g.append(b);
+  }
+  var f = el("form"); var p = pinInput("pinIn", "비밀번호"); var ok = el("button", "btn" + (rec.bio ? "" : " primary"), "비밀번호로 열기");
+  f.append(p, ok); g.append(f, err);
+  var reset = el("button", "btn link", "비밀번호를 잊었어요 — 잠금 지우고 열쇠 다시 넣기");
+  var sure = el("div", "sheet"); sure.hidden = true;
+  sure.append(el("p", "sub", "잠금을 지우면 이 폰에 입력한 확인 기록도 함께 못 엽니다. 백업을 복사해 둔 게 있으면 다시 붙여 넣을 수 있습니다."));
+  var yes = el("button", "btn", "잠금 지우기"); sure.append(yes);
+  reset.onclick = function(){ sure.hidden = false; };
+  yes.onclick = function(){ lsSet(LOCK_LS, null); lsSet(STORE_LS, null); lsSet(FAIL_LS, null); route(); };
+  g.append(reset, sure);
+  f.onsubmit = function(e){ e.preventDefault();
+    var fs = failState(); if(fs.until > Date.now()){ err.textContent = Math.ceil((fs.until - Date.now()) / 1000) + "초 뒤에 다시 해 주세요."; return; }
+    ok.disabled = true;
+    pinKey(p.value, b64u(rec.salt), rec.iter).then(function(wk){ return unwrapK(wk, rec.w); })
+      .then(function(k){ lsSet(FAIL_LS, null); return unlocked(k); })
+      .catch(function(){ ok.disabled = false; var f2 = failBump(); p.value = ""; err.textContent = "비밀번호가 맞지 않습니다" + (f2.n >= 5 ? " — 잠시 기다려야 합니다." : "."); });
+  };
+  mount(g);
+  if(rec.bio) setTimeout(function(){ bioOpen(rec, err); }, 250);
+}
+function bioOpen(rec, err){
+  bioGet(b64u(rec.bio.id), b64u(rec.bio.salt)).then(prfKey).then(function(wk){ return unwrapK(wk, rec.bio.w); })
+    .then(function(k){ return unlocked(k); })
+    .catch(function(){ err.textContent = "지문으로 열지 못했습니다. 다시 누르거나 비밀번호를 쓰세요."; });
+}
+
+function unlocked(k, fresh){
+  return openEnv(ENV, k).then(function(P){
+    KEY = k; BASE = P; touchIdle();
+    return loadStore().then(function(){ if(fresh && window.PublicKeyCredential) viewBioOffer(); else afterUnlock(); });
+  }).catch(function(){ toast("데이터를 열지 못했습니다"); });
+}
+function loadStore(){
+  var raw = lsGet(STORE_LS);
+  if(!raw){ STORE = {edits:{}, confirms:{}}; return Promise.resolve(); }
+  return openEnv(JSON.parse(raw), KEY).then(function(s){ STORE = s; STORE.edits = STORE.edits || {}; STORE.confirms = STORE.confirms || {}; })
+    .catch(function(){ STORE = {edits:{}, confirms:{}}; toast("이 폰의 입력 기록을 열지 못해 비워 두었습니다"); });
+}
+function saveStore(){ return sealWith(KEY, STORE).then(function(env){ lsSet(STORE_LS, JSON.stringify(env)); }); }
+
+// ── 데이터 ──
+function items(){
+  var out = [], ed = STORE.edits;
+  BASE.items.forEach(function(it){ var e = ed[it.id]; if(e && e.deleted) return; out.push(Object.assign({}, it, e || {})); });
+  Object.keys(ed).forEach(function(id){ if(id.indexOf("local-") === 0 && !ed[id].deleted) out.push(Object.assign({id:id}, ed[id])); });
+  return out;
+}
+function sum(list, g){ return list.filter(function(i){ return i.group === g; }).reduce(function(a, i){ return a + (Number(i.amount) || 0); }, 0); }
+function freeOf(list){ return sum(list, "income") - sum(list, "fixed") - sum(list, "invest"); }
+// 확인이 필요한 달: checkFrom 부터 지난달까지 중 통장 내역으로 다 채워진 달(partial 아님)도, 폰 확인도 없는 달
+function pendingMonths(){
+  var out = [], last = prevYm(ym(new Date())), m = BASE.checkFrom || last;
+  for(var guard = 0; m <= last && guard < 60; guard++, m = nextYm(m)){
+    var bank = BASE.months[m];
+    if(bank && !bank.partial) continue;
+    if(STORE.confirms[m]) continue;
+    out.push(m);
+  }
+  return out;
+}
+
+function route(){
+  if(!ENV){ mount(gate("여유자금 가계부", "불러오는 중…")); return; }
+  if(KEY) return afterUnlock();
+  var rec = lockRec();
+  if(rec){ if(rec.kid && ENV.kid && rec.kid !== ENV.kid){ var g = gate("열쇠가 바뀌었습니다", "저장소의 열쇠가 새로 만들어졌습니다. 잠금을 지우고 새 열쇠를 넣어 주세요.");
+      var b = el("button", "btn primary", "잠금 지우고 새 열쇠 넣기"); b.onclick = function(){ lsSet(LOCK_LS, null); route(); }; g.append(b); mount(g); return; }
+    return viewUnlock(rec); }
+  if(pendKey()) return viewSetPin();
+  viewKey();
+}
+function afterUnlock(){
+  var p = pendingMonths();
+  if(p.length) return viewCheck(p[0], p.length);
+  viewMain();
+}
+
+// ── 월초 확인(잠금 화면처럼, 다 확인해야 들어간다) ──
+function viewCheck(m, left){
+  var list = items();
+  if(!CHECK || CHECK.m !== m) CHECK = {m:m, rows:{}};
+  list.forEach(function(it){ if(!CHECK.rows[it.id]) CHECK.rows[it.id] = {amount:it.amount, state:null}; });
+  var wrap = el("section", "check");
+  var head = el("div", "head");
+  head.append(el("div", "sub", left > 1 ? "확인할 달이 " + left + "개 남았습니다" : "매달 1일 확인"),
+    el("h1", null, ymLabel(m) + " 고정 항목 확인"),
+    el("p", "sub", "항목마다 실제로 들어오고 나간 금액이 맞는지 확인해 주세요. 달랐으면 금액을 고치고, 그달에 없었으면 ‘없었어요’를 누르세요. 모두 확인해야 들어갈 수 있습니다."));
+  var prog = el("div", "prog"), bar = el("span"); prog.append(bar); head.append(prog);
+  wrap.append(head);
+  var btn = el("button", "btn primary sticky", "");
+  function refresh(){
+    var n = list.length, d = list.filter(function(it){ return CHECK.rows[it.id].state; }).length;
+    bar.style.width = (n ? d / n * 100 : 100) + "%";
+    btn.textContent = d < n ? "확인 " + d + " / " + n : ymLabel(m) + " 확인 끝내기";
+    btn.disabled = d < n;
+  }
+  ["income", "fixed", "invest"].forEach(function(g){
+    list.filter(function(it){ return it.group === g; }).forEach(function(it){
+      var r = CHECK.rows[it.id];
+      var row = el("div", "crow");
+      var nm = el("div"); nm.append(el("div", "nm", it.name), el("div", "gp", GROUPS[g].title + (it.day ? " · 매달 " + it.day + "일" : "")));
+      var amt = el("div", "amt"); var inp = el("input"); inp.type = "text"; inp.inputMode = "numeric"; inp.id = "c-" + it.id;
+      inp.value = r.amount ? Number(r.amount).toLocaleString("ko-KR") : ""; inp.placeholder = "금액 입력"; inp.setAttribute("aria-label", it.name + " 금액");
+      amt.append(inp, el("span", "sub", "원"));
+      var acts = el("div", "acts"); var yes = el("button", "btn", "맞아요"), no = el("button", "btn", "없었어요"); yes.type = no.type = "button";
+      acts.append(yes, no);
+      function paint(){ row.className = "crow" + (r.state === "ok" ? " done" : r.state === "none" ? " none" : "");
+        yes.className = "btn" + (r.state === "ok" ? " on" : ""); no.className = "btn" + (r.state === "none" ? " on no" : ""); inp.disabled = r.state === "none"; }
+      inp.oninput = function(){ var v = Number(inp.value.replace(/[^0-9]/g, "")); r.amount = v; if(r.state === "ok"){ r.state = null; paint(); refresh(); } };
+      inp.onblur = function(){ inp.value = r.amount ? Number(r.amount).toLocaleString("ko-KR") : ""; };
+      yes.onclick = function(){ if(!r.amount){ toast("금액을 넣거나 ‘없었어요’를 눌러 주세요"); return; } r.state = r.state === "ok" ? null : "ok"; paint(); refresh(); };
+      no.onclick = function(){ r.state = r.state === "none" ? null : "none"; paint(); refresh(); };
+      nm.style.gridColumn = "1/-1"; row.append(nm, amt, acts);
+      paint(); wrap.append(row);
+    });
+  });
+  btn.onclick = function(){
+    var rows = {}; list.forEach(function(it){ var r = CHECK.rows[it.id]; rows[it.id] = {name:it.name, group:it.group, amount:r.state === "none" ? 0 : r.amount, none:r.state === "none"}; });
+    STORE.confirms[m] = {at:new Date().toISOString(), rows:rows};
+    CHECK = null; btn.disabled = true;
+    saveStore().then(function(){ toast(ymLabel(m) + " 확인을 저장했습니다"); afterUnlock(); });
+  };
+  wrap.append(btn); refresh(); mount(wrap);
+}
+
+// ── 본 화면 ──
+function viewMain(){
+  var list = items(), w = el("div", "wrap");
+  var hd = el("header"); hd.append(el("h1", null, "여유자금 가계부"), el("div", "sub", "통장 내역 반영 " + BASE.updatedAt + " · 고정 항목은 이 폰에서 고칠 수 있습니다"));
+  w.append(hd);
+  // 요약
+  var inc = sum(list, "income"), fx = sum(list, "fixed"), iv = sum(list, "invest"), fr = inc - fx - iv;
+  var hero = el("section", "hero"); hero.append(el("div", "sub", "매달 여유 자금"), el("div", "big num", won(fr)));
+  var st = el("div", "stack"); if(inc > 0) [[fx, "var(--fixed)"], [iv, "var(--invest)"], [Math.max(fr, 0), "var(--free)"]].forEach(function(p){ var s = el("span"); s.style.width = (p[0] / inc * 100) + "%"; s.style.background = p[1]; st.append(s); });
+  var eq = el("div", "eq num");
+  [["var(--income)", "고정 수입", won(inc)], ["var(--fixed)", "고정 지출", "− " + won(fx)], ["var(--invest)", "고정 재테크", "− " + won(iv)], [null, "여유 자금", "= " + won(fr), 1]].forEach(function(r){
+    var d = el("span", r[3] ? "tot" : ""); if(r[0]){ var dot = el("span", "dot"); dot.style.background = r[0]; d.append(dot); }
+    eq.append(d, el("span", r[3] ? "tot" : "", r[1]), el("span", "v" + (r[3] ? " tot" : ""), r[2])); });
+  hero.append(st, eq);
+  var tbd = list.filter(function(i){ return i.amount == null; });
+  if(tbd.length) hero.append(el("div", "sub", tbd.map(function(i){ return i.name; }).join(", ") + " 금액이 아직 미정입니다. 정하면 여유 자금에서 빠집니다."));
+  w.append(hero);
+  // 고정 항목
+  Object.keys(GROUPS).forEach(function(g){
+    var sec = el("section", "group"), h = el("div", "ghead"); h.append(el("h2", null, GROUPS[g].title), el("span", "num", won(sum(list, g)))); sec.append(h);
+    var box = el("div", "list");
+    list.filter(function(i){ return i.group === g; }).sort(function(a, b){ return (b.amount || 0) - (a.amount || 0); }).forEach(function(it){
+      var b = el("button", "row"); b.type = "button"; var bar = el("span", "bar"); bar.style.background = GROUPS[g].color;
+      var main = el("span", "main"); main.append(el("div", "name", it.name));
+      var meta = [it.day ? "매달 " + it.day + "일" : "", it.note || ""].filter(Boolean).join(" · "); if(meta) main.append(el("div", "note", meta));
+      b.append(bar, main, el("span", "amt num", it.amount == null ? "금액 미정" : won(it.amount)));
+      b.onclick = function(){ editing = editing && editing.id === it.id ? null : Object.assign({}, it); viewMain(); };
+      box.append(b); if(editing && editing.id === it.id) box.append(editor());
+    });
+    if(editing && editing.id === "new:" + g) box.append(editor());
+    sec.append(box);
+    var add = el("button", "add", "＋ 항목 추가"); add.type = "button";
+    add.onclick = function(){ editing = {id:"new:" + g, group:g, name:"", amount:"", day:"", note:""}; viewMain(); var n = $("f-name"); if(n) n.focus(); };
+    sec.append(add); w.append(sec);
+  });
+  w.append(records());
+  // 백업·잠금
+  var foot = el("section", "group"); foot.append(el("h2", null, "이 폰의 입력 기록"),
+    el("p", "sub", "월초 확인과 항목 수정은 이 폰에만 암호화해 저장됩니다. 폰을 바꾸거나 Claude에게 넘길 땐 백업을 복사해 붙여 넣으세요."));
+  var fb = el("div", "foot");
+  var cp = el("button", "btn", "백업 복사"), ps = el("button", "btn", "백업 붙여넣기"), lk = el("button", "btn", "지금 잠그기");
+  fb.append(cp, ps, lk); foot.append(fb);
+  var sheet = el("div", "sheet"); sheet.hidden = true; var ta = el("textarea"); ta.id = "bk"; ta.spellcheck = false;
+  var sv = el("button", "btn primary", "이 백업으로 바꾸기"); sheet.append(ta, sv); foot.append(sheet); w.append(foot);
+  cp.onclick = function(){ sealWith(KEY, STORE).then(function(env){ var t = JSON.stringify(env);
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ toast("백업을 복사했습니다(암호문)"); })
+      .catch(function(){ sheet.hidden = false; ta.value = t; ta.select(); toast("길게 눌러 복사해 주세요"); }); }); };
+  ps.onclick = function(){ sheet.hidden = false; ta.value = ""; ta.focus(); };
+  sv.onclick = function(){ var env; try { env = JSON.parse(ta.value.trim()); } catch(e){ toast("백업 모양이 아닙니다"); return; }
+    openEnv(env, KEY).then(function(s){ STORE = {edits:s.edits || {}, confirms:s.confirms || {}}; return saveStore(); })
+      .then(function(){ toast("백업으로 바꿨습니다"); afterUnlock(); }).catch(function(){ toast("이 열쇠로 열리지 않는 백업입니다"); }); };
+  lk.onclick = lockNow;
+  var a = $("app"); var y = window.scrollY; a.replaceChildren(w); window.scrollTo(0, y);
+}
+function field(id, label, val, type, cls){
+  var l = el("label", cls || ""); l.htmlFor = id; l.append(label);
+  var i = el("input"); i.id = id; i.type = "text"; i.value = val == null ? "" : val; if(type === "num") i.inputMode = "numeric";
+  i.oninput = function(){ editing[id.slice(2)] = i.value; }; l.append(i); return l;
+}
+function editor(){
+  var f = el("form", "editor");
+  f.append(field("f-name", "이름", editing.name, "", "full"), field("f-amount", "월 금액(원)", editing.amount, "num"), field("f-day", "날짜(매달 며칠)", editing.day, "num"), field("f-note", "메모", editing.note, "", "full"));
+  var a = el("div", "eacts"), isNew = String(editing.id).indexOf("new:") === 0;
+  if(!isNew){ var d = el("button", "btn danger", "삭제"); d.type = "button"; d.onclick = function(){ STORE.edits[editing.id] = {deleted:true}; editing = null; saveStore().then(function(){ toast("삭제했습니다"); viewMain(); }); }; a.append(d); }
+  var c = el("button", "btn", "닫기"); c.type = "button"; c.onclick = function(){ editing = null; viewMain(); };
+  var s = el("button", "btn primary", "저장"); a.append(c, s); f.append(a);
+  f.onsubmit = function(e){ e.preventDefault();
+    var amount = Number(String(editing.amount).replace(/[^0-9]/g, ""));
+    if(!String(editing.name || "").trim()){ toast("이름을 넣어 주세요"); return; }
+    if(!amount){ toast("금액을 숫자로 넣어 주세요"); return; }
+    var body = {group:editing.group, name:String(editing.name).trim(), amount:amount, day:Number(editing.day) || null, note:String(editing.note || "").trim()};
+    var id = isNew ? "local-" + Date.now().toString(36) : editing.id;
+    STORE.edits[id] = body; editing = null;
+    saveStore().then(function(){ toast("저장했습니다"); viewMain(); });
+  };
+  return f;
+}
+// ── 기록: 월간·연간 ──
+// 한 달 기록 = 들어온 돈(월급·정기 + 상여·기타) / 나간 돈(고정 지출 + 여유 지출 + 큰 일회성) /
+// 저축·투자(적금 등 + 증권) / 남은 돈. 본인 계좌끼리 옮긴 돈은 어느 쪽에도 넣지 않는다.
+// 통장 내역이 없고 폰 확인만 있는 달은 고정 항목만 있고 여유 지출은 '대기'다(지어내지 않는다).
+var REC = {tab:"month", m:null, y:null};
+function recOf(k){
+  var m = BASE.months[k], c = STORE.confirms[k];
+  if(m) return {k:k, bank:true, partial:!!m.partial, inc:m.income || 0, other:m.bonus || 0, fixed:m.fixed || 0,
+    spend:m.spend || 0, oneoff:m.oneoff || 0, save:m.save || 0, stock:m.stock || 0, m:m};
+  if(c){ var t = {income:0, fixed:0, invest:0}, rows = [];
+    Object.keys(c.rows).forEach(function(id){ var r = c.rows[id]; t[r.group] = (t[r.group] || 0) + (r.amount || 0); if(!r.none) rows.push(r); });
+    return {k:k, bank:false, partial:false, inc:t.income, other:0, fixed:t.fixed, spend:null, oneoff:0, save:t.invest, stock:0, rows:rows}; }
+  return null;
+}
+function totals(r){
+  var inT = r.inc + r.other, outT = r.fixed + (r.spend || 0) + r.oneoff, svT = r.save + r.stock;
+  return {inT:inT, outT:outT, svT:svT, left:inT - outT - svT};
+}
+function recKeys(){ return Object.keys(BASE.months).concat(Object.keys(STORE.confirms)).filter(function(v, i, a){ return a.indexOf(v) === i; }).sort(); }
+function tile(label, v, color, neg){
+  var t = el("div", "tile"), h = el("div", "t"); if(color){ var d = el("span", "dot"); d.style.background = color; h.append(d); } h.append(label);
+  t.append(h, el("div", "v num" + (neg ? " neg" : ""), v)); return t;
+}
+function pager(label, onPrev, onNext){
+  var p = el("div", "pager"), a = el("button", null, "‹"), b = el("button", null, "›"); a.type = b.type = "button";
+  a.setAttribute("aria-label", "이전"); b.setAttribute("aria-label", "다음");
+  a.disabled = !onPrev; b.disabled = !onNext; if(onPrev) a.onclick = onPrev; if(onNext) b.onclick = onNext;
+  p.append(a, el("b", null, label), b); return p;
+}
+function records(){
+  var sec = el("section", "group"); sec.id = "records";
+  var head = el("div", "ghead"); head.append(el("h2", null, "수입·지출 기록")); sec.append(head);
+  var keys = recKeys();
+  if(!keys.length){ sec.append(el("div", "sub", "아직 기록이 없습니다.")); return sec; }
+  if(!REC.m || keys.indexOf(REC.m) < 0) REC.m = keys[keys.length - 1];
+  var years = keys.map(function(k){ return k.slice(0, 4); }).filter(function(v, i, a){ return a.indexOf(v) === i; });
+  if(!REC.y || years.indexOf(REC.y) < 0) REC.y = years[years.length - 1];
+  var seg = el("div", "seg"); [["month", "월간"], ["year", "연간"]].forEach(function(t){
+    var b = el("button", null, t[1]); b.type = "button"; b.setAttribute("aria-pressed", REC.tab === t[0]);
+    b.onclick = function(){ REC.tab = t[0]; redrawRecords(); }; seg.append(b); });
+  sec.append(seg);
+  if(REC.tab === "month") monthView(sec, keys); else yearView(sec, keys, years);
+  return sec;
+}
+function redrawRecords(){ var old = $("records"); if(old) old.replaceWith(records()); }
+function monthView(sec, keys){
+  var i = keys.indexOf(REC.m), k = REC.m, r = recOf(k), t = totals(r);
+  sec.append(pager(ymLabel(k), i > 0 ? function(){ REC.m = keys[i - 1]; redrawRecords(); } : null,
+    i < keys.length - 1 ? function(){ REC.m = keys[i + 1]; redrawRecords(); } : null));
+  if(r.partial) sec.append(el("div", "sub", "진행 중인 달입니다. 통장 내역을 받은 날까지만 들어 있습니다."));
+  if(!r.bank) sec.append(el("div", "sub", "폰에서 확인한 고정 항목만 있습니다. 여유 지출은 그달 통장 내역을 Claude에게 주면 채워집니다."));
+  var tl = el("div", "tiles");
+  tl.append(tile("들어온 돈", won(t.inT), "var(--income)"), tile("나간 돈", r.bank ? won(t.outT) : won(t.outT) + "+", "var(--fixed)"),
+    tile("저축·투자", won(t.svT), "var(--invest)"), tile("남은 돈", r.bank ? won(t.left) : "대기", "var(--free)", r.bank && t.left < 0));
+  sec.append(tl);
+  if(r.bank && !r.partial){
+    var cap = r.inc - r.fixed - r.save, left = cap - r.spend, card = el("div", "month");
+    var top = el("div", "mtop"); top.append(el("span", "sub", "여유 지출 · 세로 줄은 그달 여유 자금 " + won(cap)));
+    top.append(el("span", "chip " + (left >= 0 ? "ok" : "over"), left >= 0 ? man(left) + " 남음" : man(-left) + " 넘음"));
+    card.append(top, bar(r.spend, cap, Math.max(cap, r.spend) * 1.05 || 1, left < 0), mline(r.m)); sec.append(card);
+  }
+  var box = el("div", "month"), kv = el("div", "kv num");
+  function add(a, b){ kv.append(el("span", null, a), el("span", null, won(b))); }
+  function h(x){ kv.append(el("span", "h", x)); }
+  if(r.bank){ var m = r.m;
+    h("들어온 돈"); add("월급·정기 입금", r.inc); if(r.other) add("상여·정산·기타", r.other);
+    h("나간 돈"); add("고정 지출", r.fixed);
+    Object.keys(m.cats || {}).sort(function(a, b){ return m.cats[b] - m.cats[a]; }).forEach(function(x){ add("여유 · " + x, m.cats[x]); });
+    (m.oneoffs || []).forEach(function(o){ add("일회성 · " + o.date.replace("-", "/") + " " + o.to, o.amount); });
+    h("저축·투자"); add("적금·청약 등", r.save); if(r.stock) add("증권 계좌로", r.stock);
+  } else {
+    ["income", "fixed", "invest"].forEach(function(g){ var rs = r.rows.filter(function(x){ return x.group === g; }); if(!rs.length) return;
+      h(GROUPS[g].title); rs.forEach(function(x){ add(x.name, x.amount); }); });
+  }
+  box.append(kv); sec.append(box);
+}
+function yearView(sec, keys, years){
+  var yi = years.indexOf(REC.y), y = REC.y, ks = keys.filter(function(k){ return k.slice(0, 4) === y; });
+  sec.append(pager(y + "년", yi > 0 ? function(){ REC.y = years[yi - 1]; redrawRecords(); } : null,
+    yi < years.length - 1 ? function(){ REC.y = years[yi + 1]; redrawRecords(); } : null));
+  var rs = ks.map(recOf), T = {inT:0, outT:0, svT:0, left:0}, waiting = 0;
+  rs.forEach(function(r){ var t = totals(r); Object.keys(T).forEach(function(x){ T[x] += t[x]; }); if(!r.bank) waiting++; });
+  var first = Number(ks[0].slice(5)), last = Number(ks[ks.length - 1].slice(5));
+  sec.append(el("div", "sub", "기록된 달 " + first + "월~" + last + "월(" + ks.length + "개월)" + (waiting ? " · " + waiting + "개월은 여유 지출 대기" : "")));
+  var tl = el("div", "tiles");
+  tl.append(tile("들어온 돈", won(T.inT), "var(--income)"), tile("나간 돈", won(T.outT), "var(--fixed)"),
+    tile("저축·투자", won(T.svT), "var(--invest)"), tile("남은 돈", won(T.left), "var(--free)", T.left < 0));
+  sec.append(tl);
+  var full = rs.filter(function(r){ return r.bank && !r.partial; });
+  if(full.length){ var a = {inT:0, outT:0, svT:0}; full.forEach(function(r){ var t = totals(r); a.inT += t.inT; a.outT += t.outT; a.svT += t.svT; });
+    sec.append(el("div", "sub num", "다 끝난 " + full.length + "개월 월평균: 들어온 돈 " + man(a.inT / full.length) + " · 나간 돈 " + man(a.outT / full.length) + " · 저축·투자 " + man(a.svT / full.length))); }
+  var maxIn = Math.max.apply(null, rs.map(function(r){ var t = totals(r); return Math.max(t.inT, t.outT + t.svT); })) || 1;
+  rs.slice().reverse().forEach(function(r){
+    var t = totals(r), b = el("button", "yrow"); b.type = "button";
+    var top = el("div", "top"); top.append(el("b", null, Number(r.k.slice(5)) + "월"));
+    top.append(el("span", "chip " + (r.partial || !r.bank ? "part" : t.left >= 0 ? "ok" : "over"), r.partial ? "진행 중" : !r.bank ? "대기" : (t.left >= 0 ? "남음 " : "모자람 ") + man(Math.abs(t.left))));
+    var yb = el("div", "ybar"); yb.setAttribute("role", "img"); yb.setAttribute("aria-label", "나간 돈 " + won(t.outT) + ", 저축·투자 " + won(t.svT) + ", 남은 돈 " + won(t.left));
+    [[t.outT, "var(--fixed)"], [t.svT, "var(--invest)"], [Math.max(t.left, 0), "var(--free)"]].forEach(function(p){ var s = el("span"); s.style.width = (p[0] / maxIn * 100) + "%"; s.style.background = p[1]; yb.append(s); });
+    var tx = el("div", "ytxt num"); [["들어옴", t.inT], ["나감", t.outT], ["저축·투자", t.svT]].forEach(function(p){ tx.append(el("span", null, p[0] + " " + man(p[1]))); });
+    b.append(top, yb, tx);
+    b.onclick = function(){ REC.tab = "month"; REC.m = r.k; redrawRecords(); var e = $("records"); if(e) e.scrollIntoView({block:"start"}); };
+    sec.append(b);
+  });
+}
+function bar(v, cap, maxV, over){
+  var b = el("div", "mbar"); b.setAttribute("role", "img"); b.setAttribute("aria-label", "여유 지출 " + won(v) + ", 여유 자금 " + won(cap));
+  var f = el("div", "fill" + (over ? " over" : "")); f.style.width = Math.min(100, v / maxV * 100) + "%";
+  var c = el("div", "cap"); c.style.left = Math.min(100, cap / maxV * 100) + "%"; b.append(f, c); return b;
+}
+function mline(m){ var l = el("div", "mline num"); l.append(el("span", null, "여유 지출 " + won(m.spend || 0))); if(m.oneoff) l.append(el("span", null, "큰 일회성 " + won(m.oneoff))); return l; }
+
+// ── 시작 ──
+route();
+fetch("book.json", {cache:"no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+  .then(function(j){ if(!j || j.alg !== "AES-GCM") throw 0; ENV = j; route(); })
+  .catch(function(){ mount(gate("데이터를 받지 못했습니다", "인터넷 연결을 확인하고 다시 열어 주세요.")); });
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
+</script>
+</body>
+</html>
