@@ -316,12 +316,14 @@ function viewUnlock(rec){
       .catch(function(){ ok.disabled = false; var f2 = failBump(); p.value = ""; err.textContent = "비밀번호가 맞지 않습니다" + (f2.n >= 5 ? " — 잠시 기다려야 합니다." : "."); });
   };
   mount(g);
-  if(rec.bio) setTimeout(function(){ bioOpen(rec, err); }, 250);
+  // 열자마자 지문 창을 띄워 본다. 브라우저에 따라(삼성 인터넷 등) 사용자가 누르기 전엔 막히는데,
+  // 그건 실패가 아니므로 오류 문구를 띄우지 않는다(2026-11-28 사용자 화면에서 열자마자 '못했습니다'가 떴다).
+  if(rec.bio) setTimeout(function(){ bioOpen(rec, err, true); }, 250);
 }
-function bioOpen(rec, err){
+function bioOpen(rec, err, auto){
   bioGet(b64u(rec.bio.id), b64u(rec.bio.salt)).then(prfKey).then(function(wk){ return unwrapK(wk, rec.bio.w); })
     .then(function(k){ return unlocked(k); })
-    .catch(function(){ err.textContent = "지문으로 열지 못했습니다. 다시 누르거나 비밀번호를 쓰세요."; });
+    .catch(function(){ if(!auto) err.textContent = "지문으로 열지 못했습니다. 다시 누르거나 비밀번호를 쓰세요."; });
 }
 
 function unlocked(k, fresh){
