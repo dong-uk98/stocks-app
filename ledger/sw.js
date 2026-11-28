@@ -1,5 +1,5 @@
 // 앱 껍데기는 캐시에서 바로 띄우고, book.json 은 늘 네트워크 먼저(없으면 마지막 받은 것).
-var C = "ledger-v2", SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
+var C = "ledger-v3", SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", function(e){ e.waitUntil(caches.open(C).then(function(c){ return c.addAll(SHELL); })); self.skipWaiting(); });
 self.addEventListener("activate", function(e){ e.waitUntil(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return k !== C; }).map(function(k){ return caches.delete(k); })); })); self.clients.claim(); });
 self.addEventListener("fetch", function(e){

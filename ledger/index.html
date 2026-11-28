@@ -52,23 +52,6 @@ input,textarea{font:inherit;font-size:16px;color:var(--fg);background:var(--surf
 .bio{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;font-weight:600}
 .bio svg{width:22px;height:22px}
 
-.check{display:flex;flex-direction:column;gap:14px;max-width:560px;margin:0 auto}
-.check .head{display:flex;flex-direction:column;gap:6px}
-.check .head h1{font-size:1.3rem}
-.prog{height:6px;background:var(--track);border-radius:3px;overflow:hidden}
-.prog span{display:block;height:100%;background:var(--free);transition:width .2s}
-.crow{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center}
-.crow.done{border-color:var(--free)}
-.crow.none{opacity:.7}
-.crow .nm{font-weight:600;min-width:0;overflow-wrap:anywhere}
-.crow .gp{font-size:.75rem;color:var(--muted)}
-.crow .amt{grid-column:1/-1;display:flex;gap:8px;align-items:center}
-.crow .amt input{flex:1;min-width:0}
-.crow .acts{grid-column:1/-1;display:flex;gap:8px}
-.crow .acts button{flex:1;padding:9px}
-.crow .acts .on{background:var(--free);border-color:var(--free);color:var(--on-accent);font-weight:600}
-.crow .acts .on.no{background:var(--muted);border-color:var(--muted)}
-.sticky{position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
 
 /* 본 화면 */
 .hero{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 18px;display:flex;flex-direction:column;gap:14px}
@@ -116,6 +99,8 @@ details[open] summary::before{content:"－ "}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:.88rem;max-width:calc(100% - 32px);z-index:5}
 .sheet{display:flex;flex-direction:column;gap:10px}
 textarea{min-height:110px;font-size:13px;font-family:ui-monospace,monospace}
+.notice{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:10px;padding:12px 14px;font-size:.9rem}
+.notice span{color:var(--muted);font-size:.82rem}
 /* 기록(월간·연간) */
 .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--track);border-radius:10px;padding:3px;gap:3px}
 .seg button{border:0;background:none;border-radius:8px;padding:8px;font-weight:600;color:var(--muted)}
@@ -151,7 +136,7 @@ var ENV = null;        // book.json (암호문)
 var KEY = null;        // 풀린 데이터 열쇠(base64url) — 메모리에만
 var BASE = null;       // 풀린 book.json 내용
 var STORE = null;      // 폰에서 입력한 것 {edits:{id:{...}|{deleted:true}}, confirms:{ "YYYY-MM": {at, rows:{id:{amount,none}}} }}
-var idleT = null, editing = null, CHECK = null;
+var idleT = null, editing = null;
 
 var GROUPS = {income:{title:"고정 수입", color:"var(--income)"}, fixed:{title:"고정 지출", color:"var(--fixed)"}, invest:{title:"고정 재테크", color:"var(--invest)"}};
 var FP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 11v3a6 6 0 0 1-1.2 3.6"/><path d="M8.5 9.5A4 4 0 0 1 16 11v2.5"/><path d="M6 12a6 6 0 0 1 11.5-2.4"/><path d="M4.5 8A8.5 8.5 0 0 1 19 7"/><path d="M15.5 16.5c-.3 1.2-.8 2.3-1.5 3.3"/><path d="M8 14.5c0 1.6-.4 3-1.2 4.2"/></svg>';
@@ -226,7 +211,7 @@ function failState(){ try { return JSON.parse(lsGet(FAIL_LS) || '{"n":0,"until":
 function failBump(){ var f = failState(); f.n++; if(f.n >= 5) f.until = Date.now() + 30000 * Math.pow(2, Math.min(f.n - 5, 6)); lsSet(FAIL_LS, JSON.stringify(f)); return f; }
 
 // ── 잠금 ──
-function lockNow(){ KEY = null; BASE = null; STORE = null; editing = null; CHECK = null; clearTimeout(idleT); route(); }
+function lockNow(){ KEY = null; BASE = null; STORE = null; editing = null; clearTimeout(idleT); route(); }
 function touchIdle(){ if(!KEY) return; clearTimeout(idleT); idleT = setTimeout(lockNow, IDLE_MS); }
 document.addEventListener("visibilitychange", function(){ if(document.hidden && KEY) lockNow(); });
 ["click", "touchstart", "keydown", "scroll"].forEach(function(ev){ document.addEventListener(ev, touchIdle, {passive:true}); });
@@ -360,13 +345,13 @@ function items(){
 }
 function sum(list, g){ return list.filter(function(i){ return i.group === g; }).reduce(function(a, i){ return a + (Number(i.amount) || 0); }, 0); }
 function freeOf(list){ return sum(list, "income") - sum(list, "fixed") - sum(list, "invest"); }
-// 확인이 필요한 달: checkFrom 부터 지난달까지 중 통장 내역으로 다 채워진 달(partial 아님)도, 폰 확인도 없는 달
+// 통장 내역이 아직 다 안 들어온 지난 달들(checkFrom 부터 지난달까지). 2026-11-28 사용자 결정으로
+// 월초 잠금(고정 항목 하나씩 확인)은 없앴고, 이 달들은 본 화면 맨 위 알림 띠로만 알린다.
 function pendingMonths(){
   var out = [], last = prevYm(ym(new Date())), m = BASE.checkFrom || last;
   for(var guard = 0; m <= last && guard < 60; guard++, m = nextYm(m)){
     var bank = BASE.months[m];
     if(bank && !bank.partial) continue;
-    if(STORE.confirms[m]) continue;
     out.push(m);
   }
   return out;
@@ -382,65 +367,20 @@ function route(){
   if(pendKey()) return viewSetPin();
   viewKey();
 }
-function afterUnlock(){
-  var p = pendingMonths();
-  if(p.length) return viewCheck(p[0], p.length);
-  viewMain();
-}
-
-// ── 월초 확인(잠금 화면처럼, 다 확인해야 들어간다) ──
-function viewCheck(m, left){
-  var list = items();
-  if(!CHECK || CHECK.m !== m) CHECK = {m:m, rows:{}};
-  list.forEach(function(it){ if(!CHECK.rows[it.id]) CHECK.rows[it.id] = {amount:it.amount, state:null}; });
-  var wrap = el("section", "check");
-  var head = el("div", "head");
-  head.append(el("div", "sub", left > 1 ? "확인할 달이 " + left + "개 남았습니다" : "매달 1일 확인"),
-    el("h1", null, ymLabel(m) + " 고정 항목 확인"),
-    el("p", "sub", "항목마다 실제로 들어오고 나간 금액이 맞는지 확인해 주세요. 달랐으면 금액을 고치고, 그달에 없었으면 ‘없었어요’를 누르세요. 모두 확인해야 들어갈 수 있습니다."));
-  var prog = el("div", "prog"), bar = el("span"); prog.append(bar); head.append(prog);
-  wrap.append(head);
-  var btn = el("button", "btn primary sticky", "");
-  function refresh(){
-    var n = list.length, d = list.filter(function(it){ return CHECK.rows[it.id].state; }).length;
-    bar.style.width = (n ? d / n * 100 : 100) + "%";
-    btn.textContent = d < n ? "확인 " + d + " / " + n : ymLabel(m) + " 확인 끝내기";
-    btn.disabled = d < n;
-  }
-  ["income", "fixed", "invest"].forEach(function(g){
-    list.filter(function(it){ return it.group === g; }).forEach(function(it){
-      var r = CHECK.rows[it.id];
-      var row = el("div", "crow");
-      var nm = el("div"); nm.append(el("div", "nm", it.name), el("div", "gp", GROUPS[g].title + (it.day ? " · 매달 " + it.day + "일" : "")));
-      var amt = el("div", "amt"); var inp = el("input"); inp.type = "text"; inp.inputMode = "numeric"; inp.id = "c-" + it.id;
-      inp.value = r.amount ? Number(r.amount).toLocaleString("ko-KR") : ""; inp.placeholder = "금액 입력"; inp.setAttribute("aria-label", it.name + " 금액");
-      amt.append(inp, el("span", "sub", "원"));
-      var acts = el("div", "acts"); var yes = el("button", "btn", "맞아요"), no = el("button", "btn", "없었어요"); yes.type = no.type = "button";
-      acts.append(yes, no);
-      function paint(){ row.className = "crow" + (r.state === "ok" ? " done" : r.state === "none" ? " none" : "");
-        yes.className = "btn" + (r.state === "ok" ? " on" : ""); no.className = "btn" + (r.state === "none" ? " on no" : ""); inp.disabled = r.state === "none"; }
-      inp.oninput = function(){ var v = Number(inp.value.replace(/[^0-9]/g, "")); r.amount = v; if(r.state === "ok"){ r.state = null; paint(); refresh(); } };
-      inp.onblur = function(){ inp.value = r.amount ? Number(r.amount).toLocaleString("ko-KR") : ""; };
-      yes.onclick = function(){ if(!r.amount){ toast("금액을 넣거나 ‘없었어요’를 눌러 주세요"); return; } r.state = r.state === "ok" ? null : "ok"; paint(); refresh(); };
-      no.onclick = function(){ r.state = r.state === "none" ? null : "none"; paint(); refresh(); };
-      nm.style.gridColumn = "1/-1"; row.append(nm, amt, acts);
-      paint(); wrap.append(row);
-    });
-  });
-  btn.onclick = function(){
-    var rows = {}; list.forEach(function(it){ var r = CHECK.rows[it.id]; rows[it.id] = {name:it.name, group:it.group, amount:r.state === "none" ? 0 : r.amount, none:r.state === "none"}; });
-    STORE.confirms[m] = {at:new Date().toISOString(), rows:rows};
-    CHECK = null; btn.disabled = true;
-    saveStore().then(function(){ toast(ymLabel(m) + " 확인을 저장했습니다"); afterUnlock(); });
-  };
-  wrap.append(btn); refresh(); mount(wrap);
-}
+function afterUnlock(){ viewMain(); }
 
 // ── 본 화면 ──
 function viewMain(){
   var list = items(), w = el("div", "wrap");
   var hd = el("header"); hd.append(el("h1", null, "여유자금 가계부"), el("div", "sub", "통장 내역 반영 " + BASE.updatedAt + " · 고정 항목은 이 폰에서 고칠 수 있습니다"));
   w.append(hd);
+  var pend = pendingMonths();
+  if(pend.length){
+    var nb = el("div", "notice");
+    nb.append(el("b", null, pend.map(function(m){ return Number(m.slice(5)) + "월"; }).join(", ") + " 통장 내역이 아직 반영되지 않았습니다"),
+      el("span", null, "농협 거래내역 메일을 한 화면씩 캡처해 Claude에게 올려 주세요. 반영되면 이 알림은 사라집니다."));
+    w.append(nb);
+  }
   // 요약
   var inc = sum(list, "income"), fx = sum(list, "fixed"), iv = sum(list, "invest"), fr = inc - fx - iv;
   var hero = el("section", "hero"); hero.append(el("div", "sub", "매달 여유 자금"), el("div", "big num", won(fr)));
