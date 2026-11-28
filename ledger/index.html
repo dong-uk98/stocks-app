@@ -335,8 +335,19 @@ function unlocked(k, fresh){
 function loadStore(){
   var raw = lsGet(STORE_LS);
   if(!raw){ STORE = {edits:{}, confirms:{}}; return Promise.resolve(); }
-  return openEnv(JSON.parse(raw), KEY).then(function(s){ STORE = s; STORE.edits = STORE.edits || {}; STORE.confirms = STORE.confirms || {}; })
+  return openEnv(JSON.parse(raw), KEY).then(function(s){ STORE = s; STORE.edits = STORE.edits || {}; STORE.confirms = STORE.confirms || {}; return absorbed(); })
     .catch(function(){ STORE = {edits:{}, confirms:{}}; toast("이 폰의 입력 기록을 열지 못해 비워 두었습니다"); });
+}
+// Claude 가 백업을 받아 원본(book.json)에 합친 뒤에는 폰 쪽 수정이 원본과 같아진다.
+// 같아진 수정은 지우고, 폰에서 새로 만든 항목이 원본에 같은 묶음·금액으로 들어왔으면(이름은 다를 수 있다) 지운다.
+// 그래야 원본이 다음에 바뀌어도 옛 폰 수정이 가리지 않고, 같은 항목이 두 번 보이지 않는다.
+function absorbed(){
+  var ed = STORE.edits, changed = false, F = ["group", "name", "amount", "day", "note"];
+  BASE.items.forEach(function(it){ var e = ed[it.id]; if(!e || e.deleted) return;
+    if(F.every(function(f){ return (e[f] == null ? null : e[f]) === (it[f] == null ? null : it[f]); })){ delete ed[it.id]; changed = true; } });
+  Object.keys(ed).forEach(function(id){ if(id.indexOf("local-") !== 0 || ed[id].deleted) return;
+    var e = ed[id]; if(BASE.items.some(function(it){ return it.group === e.group && it.amount === e.amount && (it.name === e.name || (BASE.absorbed || []).indexOf(id) >= 0); })){ delete ed[id]; changed = true; } });
+  return changed ? saveStore() : Promise.resolve();
 }
 function saveStore(){ return sealWith(KEY, STORE).then(function(env){ lsSet(STORE_LS, JSON.stringify(env)); }); }
 
