@@ -523,6 +523,10 @@ function monthView(sec, keys){
     Object.keys(m.cats || {}).sort(function(a, b){ return m.cats[b] - m.cats[a]; }).forEach(function(x){ add("여유 · " + x, m.cats[x]); });
     (m.oneoffs || []).forEach(function(o){ add("일회성 · " + o.date.replace("-", "/") + " " + o.to, o.amount); });
     h("저축·투자"); add("적금·청약 등", r.save); if(r.stock) add("증권 계좌로", r.stock);
+    if(m.card){ var cc = m.card.cats;
+      h("카드 안쪽(" + Number(k.slice(5)) + "월 청구분" + (m.card.complete ? ")" : " · 명세서 일부만 보임)"));
+      Object.keys(cc).sort(function(a, b){ return (a.indexOf("미확인") === 0) - (b.indexOf("미확인") === 0) || cc[b] - cc[a]; })
+        .forEach(function(x){ add(x, cc[x]); }); }
   } else {
     ["income", "fixed", "invest"].forEach(function(g){ var rs = r.rows.filter(function(x){ return x.group === g; }); if(!rs.length) return;
       h(GROUPS[g].title); rs.forEach(function(x){ add(x.name, x.amount); }); });
